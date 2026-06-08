@@ -92,7 +92,7 @@ export function FloatingDock() {
 
   return (
     <div className="fixed z-50 flex flex-col-reverse items-center gap-3 pointer-events-none"
-         style={{ bottom: '28px', right: '28px' }}
+         style={{ bottom: '66px', right: '28px' }}
     >
       {/* Агент — визуально сверху */}
       {showAgent && (
