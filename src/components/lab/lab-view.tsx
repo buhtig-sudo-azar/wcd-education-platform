@@ -136,225 +136,517 @@ const BACKEND_CONFIGS: Record<string, BackendConfig> = {
 }
 
 const PROXY_CONFIG_FILES: Record<string, string> = {
-  cloudflare: `# Cloudflare Cache Rules (Page Rules / Cache Rules)
-# Конфигурация кэширования для Cloudflare CDN
+  cloudflare: `# ═══════════════════════════════════════════════════════
+# Cloudflare Cache Rules — Правила кэширования
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Cloudflare — это CDN (Content Delivery Network),
+#          сеть серверов по всему миру. Когда пользователь
+#          заходит на сайт, запрос сначала попадает на
+#          ближайший сервер Cloudflare, а не на сам сайт.
+#
+# Зачем: Чтобы страница загружалась быстрее — Cloudflare
+#        сохраняет у себя копии файлов и отдаёт их без
+#        запроса к настоящему серверу. Это и есть "кэш".
+# ═══════════════════════════════════════════════════════
 
 cache_rules:
-  # Кэшировать по расширению файла
+  # ── Правило 1: CSS-файлы кэшировать ──
+  # Что делает: если URL заканчивается на .css —
+  #             сохраняем файл в кэш на 1 час (3600 секунд)
+  #             и на "краевых" серверах на 2 часа (7200 сек)
+  # Почему: CSS — это стили (цвета, шрифты, размеры),
+  #        они редко меняются, их можно смело кэшировать
   - expression: "http.request.uri.path.ends_with('.css')"
-    action: cache
-    ttl: 3600
-    edge_ttl: 7200
+    action: cache            # cache = сохранить в кэше
+    ttl: 3600                # 3600 секунд = 1 час в браузере
+    edge_ttl: 7200           # 7200 секунд = 2 часа на серверах Cloudflare
 
+  # ── Правило 2: JS-файлы кэшировать ──
+  # Что делает: если URL заканчивается на .js — кэшируем
+  # Почему: JavaScript — это скрипты (анимации, кнопки),
+  #        они тоже статические и редко меняются
   - expression: "http.request.uri.path.ends_with('.js')"
     action: cache
-    ttl: 3600
+    ttl: 3600                # 1 час
 
+  # ── Правило 3: Изображения кэшировать ──
+  # Что делает: если URL заканчивается на .png — кэшируем
+  # Почему: Картинки тяжёлые, их точно нужно кэшировать
   - expression: "http.request.uri.path.ends_with('.png')"
     action: cache
-    ttl: 86400
+    ttl: 86400               # 86400 секунд = 1 сутки
 
-  # Динамические страницы — не кэшировать
+  # ── Правило 4: API-запросы НЕ кэшировать ──
+  # Что делает: если URL начинается с /api/ — пропускаем
+  #             мимо кэша, отправляем прямо на сервер
+  # Почему: API возвращает персональные данные (профиль,
+  #        баланс), кэшировать их нельзя — чужие данные
+  #        достанутся другому пользователю!
   - expression: "http.request.uri.path.matches('/api/*')"
-    action: bypass
+    action: bypass           # bypass = пропустить мимо кэша
 
-  # Ключ кэша: полный URL (без нормализации!)
+  # ═══ КЛЮЧЕВОЙ МОМЕНТ: Как Cloudflare определяет,
+  #       что файл статический и его можно кэшировать ═══
+  # Он смотрит на ОКОНЧАНИЕ URL:
+  #   /style.css    → видит .css  → "Это стили, кэшируем!"
+  #   /account/home → нет .css/.js → "Это страница, не кэшируем"
+  #
+  # ПРОБЛЕМА: а что если URL такой:
+  #   /account/home%0f.css
+  #   ↑ Cloudflare видит .css в конце → "Кэшируем!"
+  #   ↑ Но сервер видит /account/home → возвращает профиль!
+  #   ↑ Результат: профиль жертвы кэширован как CSS-файл!
+
+  # ── Настройки ключа кэша ──
+  # Ключ кэша — это уникальный идентификатор, по которому
+  # Cloudflare ищет сохранённый ответ. Два запроса с одним
+  # ключом → Cloudflare отдаст один и тот же кэш.
   cache_key:
-    include_query_string: true
-    normalize_path: false  # ← ПРОБЛЕМА: не нормализует %0f, %0a
-    ignore_delimiters: []`,
+    include_query_string: true   # Учитывать ?param=value в URL
+    normalize_path: false        # ← ОПАСНО! Не убирает спецсимволы
+                                  # %0f остаётся в ключе как есть
+                                  # Cloudflare НЕ понимает, что
+                                  # %0f — это разделитель
+    ignore_delimiters: []        # Не игнорировать никакие разделители
+                                  # Это значит: /home%0f.css и
+                                  # /home.css — РАЗНЫЕ ключи кэша`,
 
-  nginx: `# nginx.conf — Конфигурация обратного прокси
-# Кэширование статических ресурсов
+  nginx: `# ═══════════════════════════════════════════════════════
+# nginx.conf — Конфигурация Nginx как обратного прокси
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Nginx — это веб-сервер, который стоит перед
+#          настоящим сервером приложения. Он принимает
+#          запросы от пользователей и решает:
+#          — отдать ответ из кэша (быстро)
+#          — или переслать запрос на сервер-источник (медленно)
+#
+# Зачем: Чтобы не нагружать сервер приложения лишними
+#        запросами за статические файлы (картинки, стили)
+# ═══════════════════════════════════════════════════════
 
-proxy_cache_path /var/cache/nginx levels=1:2
-                 keys_zone=STATIC:10m
-                 max_size=1g inactive=60m;
+# ── Настройка хранилища кэша ──
+# proxy_cache_path — где и как хранить кэш на диске
+proxy_cache_path /var/cache/nginx   # Папка для кэша на диске
+                 levels=1:2         # Подпапки (для скорости поиска)
+                 keys_zone=STATIC:10m # Имя зоны "STATIC", 10 МБ памяти
+                                     # для ключей кэша (сами файлы — на диске)
+                 max_size=1g        # Максимум 1 ГБ на диске под кэш
+                 inactive=60m;      # Удалить файл, если к нему не
+                                    # обращались 60 минут
 
 server {
-    listen 80;
-    server_name example.com;
+    listen 80;                      # Принимать запросы на порт 80 (HTTP)
+    server_name example.com;        # Домен сайта
 
-    # Статические файлы — кэшировать
+    # ── Статические файлы — кэшировать ──
+    # location ~* — регулярное выражение (без учёта регистра)
+    # \\.css и \\.js — файлы с расширениями .css, .js и т.д.
+    # Если URL заканчивается на одно из этих расширений —
+    # Nginx сохранит ответ в кэш и будет отдавать его сам
     location ~* \\.(css|js|png|jpg|gif|svg|ico)$ {
-        proxy_cache STATIC;
-        proxy_cache_valid 200 30m;
+        proxy_cache STATIC;          # Использовать зону "STATIC"
+                                      # (ту самую, что создали выше)
+        proxy_cache_valid 200 30m;   # Кэшировать ответы со статусом 200
+                                      # (успешные) на 30 минут
         proxy_cache_key "$scheme$host$uri";
-        # ↑ Ключ: нормализованный путь
+        # ↑ Ключ кэша = протокол + домен + путь URL
+        #   Пример: https://example.com/style.css
+        #   Nginx НОРМАЛИЗУЕТ путь перед созданием ключа
+        #   /home%0f.css → Nginx удалит %0f → /home.css
         add_header X-Cache-Status $upstream_cache_status;
+        # ↑ Добавить заголовок-подсказку:
+        #   HIT  = взято из кэша (быстро)
+        #   MISS = запросили у сервера (медленно)
     }
 
-    # Динамические запросы — проксировать без кэша
+    # ── Динамические запросы — проксировать без кэша ──
+    # location / — все остальные URL (не попавшие в правило выше)
     location / {
-        proxy_pass http://backend;
-        proxy_cache_bypass 1;
+        proxy_pass http://backend;   # Переслать запрос на сервер-источник
+                                      # "backend" — это адрес сервера
+                                      # приложения (Node.js, Python и т.д.)
+        proxy_cache_bypass 1;        # Обойти кэш — всегда спрашивать сервер
+                                      # 1 = true (да, обойти кэш)
     }
 }
 
-# Важно: nginx нормализует URL перед проверкой location
-# %0f → удаляется при нормализации
-# Но Cloudflare этого не делает!`,
+# ═══ ВАЖНОЕ ОТЛИЧИЕ NGINX ОТ CLOUDFLARE ═══
+# Nginx НОРМАЛИЗУЕТ URL перед проверкой:
+#   /account/home%0f.css
+#   → Nginx видит %0f, удаляет его
+#   → Путь становится /home.css
+#   → Ключ кэша: https://example.com/home.css
+#
+# Cloudflare НЕ нормализует:
+#   /account/home%0f.css
+#   → Ключ кэша: https://example.com/account/home%0f.css
+#   → Cloudflare видит .css → кэширует!
+#
+# Если перед Nginx стоит Cloudflare, то:
+#   Cloudflare кэширует ответ → Nginx его даже не увидит
+#   Результат: расхождение между кэшем и сервером!`,
 
-  varnish: `# default.vcl — Конфигурация Varnish Cache
-# Логика кэширования запросов
+  varnish: `# ═══════════════════════════════════════════════════════
+# default.vcl — Конфигурация Varnish Cache
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Varnish — это кэширующий прокси-сервер.
+#          Он встаётся между пользователем и сервером.
+#          Настраивается на языке VCL (Varnish Config Language).
+#
+# Зачем: Varnish очень быстрый — он хранит кэш в оперативной
+#        памяти и отдаёт ответы за миллисекунды.
+#
+# VCL — это не обычный конфиг, а программа с "подпрограммами":
+#   vcl_recv   — вызывается при получении запроса (от клиента)
+#   vcl_backend_response — вызывается при получении ответа (от сервера)
+#   vcl_deliver — вызывается перед отправкой ответа клиенту
+# ═══════════════════════════════════════════════════════
 
-vcl 4.1;
+vcl 4.1;                        # Версия языка VCL
 
+# ── Где искать настоящий сервер ──
+# backend — это сервер-источник (Node.js, Python и т.д.)
+# Varnish будет пересылать ему запросы, если нет кэша
 backend default {
-    .host = "127.0.0.1";
-    .port = "8080";
+    .host = "127.0.0.1";        # IP-адрес сервера (localhost = этот же сервер)
+    .port = "8080";              # Порт, на котором работает сервер приложения
 }
 
+# ── Подпрограмма vcl_recv: обработка входящего запроса ──
+# Вызывается каждый раз, когда пользователь (или браузер)
+# отправляет запрос. Здесь мы решаем: кэшировать или нет.
 sub vcl_recv {
-    # Кэшировать статические файлы по расширению
+
+    # Проверяем: заканчивается ли URL на .css, .js, .png и т.д.
+    # req.url — это путь из запроса (например, /style.css)
+    # ~ — оператор регулярного выражения (поиск по шаблону)
+    # $ — конец строки (должно заканчиваться на .css и т.д.)
     if (req.url ~ "\\.(css|js|png|jpg|gif|svg|ico)$") {
-        unset req.http.Cookie;
-        return (hash);
+        unset req.http.Cookie;    # Удалить Cookie из запроса
+                                   # Зачем: Cookie делает кэш уникальным
+                                   # для каждого пользователя. Без Cookie
+                                   # кэш будет общим для всех. Для стилей
+                                   # и картинок это нормально — они одинаковые.
+        return (hash);            # hash = "ищи в кэше, а если нет —
+                                   #          запроси у сервера и сохрани"
     }
 
-    # Ключ кэша: только путь (без query string)
-    # ↑ ПРОБЛЕМА: Varnish использует req.url как есть
-    # Если URL = /account/home%0f.css → hash по полному URL
-    # Backend получит /account/home (после strip)
+    # ═══ ПРОБЛЕМА: Varnish НЕ нормализует URL ═══
+    # req.url используется КАК ЕСТЬ — без изменений.
+    # Если пришёл: /account/home%0f.css
+    #   → Varnish видит .css в конце → кэшировать!
+    #   → Ключ кэша = /account/home%0f.css (полный путь)
+    #   → Сервер получит: /account/home (обрежет %0f)
+    #   → Сервер вернёт профиль жертвы
+    #   → Varnish сохранит профиль в кэше как "CSS-файл"
+    #   → Любой, кто запросит /account/home%0f.css,
+    #     получит данные жертвы из кэша!
 }
 
+# ── Подпрограмма vcl_backend_response: обработка ответа сервера ──
+# Вызывается, когда сервер-источник вернул ответ.
+# Здесь мы решаем, насколько долго его кэшировать.
 sub vcl_backend_response {
-    # Кэшировать ответы со статусом 200
-    if (beresp.status == 200) {
-        set beresp.ttl = 2h;
+    if (beresp.status == 200) {   # Если статус 200 (всё ОК)
+        set beresp.ttl = 2h;      # ttl = Time To Live = время жизни кэша
+                                   # 2h = 2 часа. Через 2 часа кэш удалится
+                                   # и Varnish снова спросит у сервера.
     }
+    # ВНИМАНИЕ: нет проверки на Content-Type!
+    # Даже если сервер вернул JSON с данными пользователя,
+    # Varnish всё равно кэширует на 2 часа — ведь статус 200.
+    # Нужно добавить: if (beresp.http.Content-Type ~ "json") { set beresp.ttl = 0s; }
 }
 
+# ── Подпрограмма vcl_deliver: отправка ответа клиенту ──
+# Вызывается прямо перед тем, как отдать ответ пользователю.
+# Добавляем отладочный заголовок, чтобы понимать: из кэша или нет.
 sub vcl_deliver {
-    # Добавить заголовок для отладки
-    if (obj.hits > 0) {
-        set resp.http.X-Cache = "HIT";
+    if (obj.hits > 0) {                    # obj.hits = сколько раз этот кэш
+                                            # использовали. > 0 = есть в кэше
+        set resp.http.X-Cache = "HIT";     # HIT = ответ из кэша (быстро)
     } else {
-        set resp.http.X-Cache = "MISS";
+        set resp.http.X-Cache = "MISS";    # MISS = ответ от сервера (медленно)
     }
+    # Как использовать: откройте DevTools → Network →
+    # посмотрите заголовок X-Cache в ответе
 }`,
 }
 
 const BACKEND_CONFIG_FILES: Record<string, string> = {
-  nodejs: `// app.js — Node.js + Express сервер
-// Обработка URL и маршрутизация
+  nodejs: `// ═══════════════════════════════════════════════════════
+// app.js — Node.js + Express сервер
+// ═══════════════════════════════════════════════════════
+//
+// Что это: Express — это фреймворк для создания серверов
+//          на языке JavaScript (Node.js). Он принимает
+//          HTTP-запросы и возвращает ответы.
+//
+// Как работает маршрутизация:
+//   app.get('/путь', обработчик)
+//   — если URL совпадает с '/путь' — вызывается обработчик
+//   — если нет — Express вернёт 404 (не найдено)
+// ═══════════════════════════════════════════════════════
 
-const express = require('express');
-const app = express();
+const express = require('express');  // Подключаем фреймворк Express
+const app = express();               // Создаём приложение-сервер
 
-// Middleware: парсинг URL
-// Express автоматически декодирует URL:
-//   /account/home%0f.css → decoded: /account/home\\x0f.css
-// Но \\x0f — непечатный символ, маршрут не совпадает!
+// ── Middleware: парсинг URL ──
+// Middleware — это промежуточная функция, которая обрабатывает
+// каждый запрос до того, как он попадёт в обработчик маршрута.
+//
+// Express автоматически декодирует URL-кодированные символы:
+//   /account/home%0f.css
+//   → decoded: /account/home\x0f.css
+//   → \x0f — это невидимый управляющий символ (Shift In)
+//
+// ВАЖНО: маршрут '/account/home' НЕ совпадёт с путём,
+// содержащим \x0f! Это ДРУГОЙ путь для Express.
+// Но если прокси обрезает %0f ДО передачи запроса —
+// Express получит чистый /account/home — и маршрут совпадёт!
 
-// Защищённый маршрут — профиль пользователя
+// ── Защищённый маршрут — профиль пользователя ──
+// app.get(путь, middleware, обработчик)
+// authMiddleware — проверяет, что пользователь залогинен
+// req — объект запроса (всё, что прислал браузер)
+// res — объект ответа (что сервер вернёт браузеру)
 app.get('/account/home', authMiddleware, (req, res) => {
-    // req.user извлекается из cookie/session
+    // req.user — данные текущего пользователя
+    // Извлекаются из cookie или session (сессии)
     const userData = {
-        username: req.user.email,
-        api_key: req.user.apiKey,
-        balance: req.user.balance,
-        personal_data: req.user.personalData
+        username: req.user.email,        // Email пользователя
+        api_key: req.user.apiKey,        // Его секретный API-ключ
+        balance: req.user.balance,       // Баланс аккаунта
+        personal_data: req.user.personalData  // Личные данные
     };
-    res.json(userData);
-    // ↑ Нет заголовка Cache-Control: no-store!
-    // ↑ Кэш может сохранить этот ответ
+    res.json(userData);  // Отправить данные как JSON-ответ
+    //                        ↑ ВНИМАНИЕ! Нет заголовка Cache-Control!
+    //                        ↑ По умолчанию Express НЕ добавляет
+    //                          Cache-Control: no-store
+    //                        ↑ Это значит: кэш-сервер может сохранить
+    //                          этот ответ и выдать его другому человеку!
+    //
+    // КАК ИСПРАВИТЬ:
+    //   res.set('Cache-Control', 'no-store').json(userData);
+    //   ↑ no-store = "не сохранять в кэше НИКОГДА"
 });
 
-// Статические файлы
+// ── Статические файлы ──
+// express.static — раздаёт файлы из папки 'public'
+// (картинки, стили, скрипты) без участия серверного кода
 app.use('/static', express.static('public'));
 
-// ВАЖНО: Express обрабатывает %0f в пути
-// /account/home%0f.css → маршрут /account/home НЕ совпадает
-// Но некоторые конфигурации прокси обрезают %0f
-// и THEN направляют запрос сюда как /account/home
-// → Расхождение с кэшем!`,
+// ═══ КАК ПРОИСХОДИТ РАСХОЖДЕНИЕ ═══
+// 1. Атакующий создаёт URL: /account/home%0f.css
+// 2. Прокси (Cloudflare) видит .css → кэширует
+// 3. Прокси пересылает запрос на Express
+//    ВАРИАНТ А: Прокси передал как есть → /account/home%0f.css
+//       → Express декодирует: /account/home\x0f.css
+//       → Маршрут НЕ совпадает → 404
+//    ВАРИАНТ Б: Прокси обрезал %0f → /account/home
+//       → Маршрут СОВПАДАЕТ → возвращает профиль!
+//       → Кэш сохраняет профиль как .css файл!
+//
+// Вариант Б — это и есть атака Web Cache Deception!`,
 
-  python: `# app.py — Python + Flask/Django сервер
-# Обработка URL и маршрутизация
+  python: `# ═══════════════════════════════════════════════════════
+# app.py — Python + Flask сервер
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Flask — это лёгкий фреймворк для создания
+#          веб-серверов на языке Python. Он принимает
+#          HTTP-запросы и возвращает ответы.
+#
+# Как работает маршрутизация:
+#   @app.route('/путь') — декоратор, который связывает
+#   URL-путь с функцией-обработчиком.
+#   Если URL точно совпадает — функция вызывается.
+#   Если нет — Flask вернёт 404 (не найдено).
+# ═══════════════════════════════════════════════════════
 
-from flask import Flask, request, jsonify
-from auth import require_auth
+from flask import Flask, request, jsonify  # Импортируем Flask и инструменты
+from auth import require_auth               # Наша функция проверки логина
 
-app = Flask(__name__)
+app = Flask(__name__)  # Создаём приложение Flask
+                       # __name__ = имя текущего файла
 
-# Защищённый маршрут — профиль пользователя
+# ── Защищённый маршрут — профиль пользователя ──
+# @app.route('/account/home') — привязать URL /account/home
+# @require_auth — декоратор проверки: пользователь залогинен?
+# Если не залогинен — вернёт 401 (не авторизован)
 @app.route('/account/home')
 @require_auth
-def account_home():
-    user = get_current_user()
-    return jsonify({
-        'username': user.email,
-        'api_key': user.api_key,
-        'balance': user.balance,
+def account_home():                    # Функция-обработчик
+    user = get_current_user()          # Получить данные текущего пользователя
+    return jsonify({                   # Вернуть как JSON-ответ
+        'username': user.email,        # Email пользователя
+        'api_key': user.api_key,       # Его секретный API-ключ
+        'balance': user.balance,       # Баланс аккаунта
     })
-    # ↑ Нет Cache-Control: no-store!
+    # ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+    # ↑ Flask по умолчанию НЕ добавляет этот заголовок
+    # ↑ Кэш-сервер может сохранить этот ответ
+    #
+    # КАК ИСПРАВИТЬ:
+    #   response = jsonify({...})
+    #   response.headers['Cache-Control'] = 'no-store'
+    #   return response
+    #   ↑ no-store = "не сохранять в кэше НИКОГДА"
 
-# Flask маршрутизатор:
-# /account/home%0a.css → 404 (маршрут не найден)
-# Но если прокси обрезает %0a → /account/home
-# И передаёт на сервер → маршрут совпадает → данные утечки
+# ═══ Как Flask обрабатывает спецсимволы в URL ═══
+# Python декодирует URL перед маршрутизацией:
+#   /account/home%0a.css → /account/home\n.css
+#   \n = перевод строки (новая строка)
+#   /account/home%00.css → /account/home\x00.css
+#   \x00 = null-байт (пустой символ)
 #
-# Python urllib.parse декодирует:
-#   %0a → \\n (перевод строки)
-#   %00 → \\x00 (null byte)
-# Flask обрезает путь по null byte`,
+# Что происходит при разных разделителях:
+#
+#   URL: /account/home%0a.css
+#   → Flask декодирует: /account/home\n.css
+#   → Маршрут '/account/home' НЕ совпадает → 404
+#   → Но если прокси ОБРЕЗАЕТ %0a → отправляет /account/home
+#   → Маршрут СОВПАДАЕТ → возвращает профиль!
+#   → Кэш сохраняет профиль как .css файл!
+#
+#   URL: /account/home%00.css
+#   → Flask обрезает по null-байту: /account/home
+#   → Маршрут СОВПАДАЕТ → возвращает профиль!
+#   → И даже без участия прокси — это уязвимость!
+#
+# Вывод: %00 опаснее %0a, потому что Flask сам обрезает путь`,
 
-  java: `// Application.java — Java + Spring Boot
-// Обработка URL и маршрутизация
+  java: `// ═══════════════════════════════════════════════════════
+// Application.java — Java + Spring Boot сервер
+// ═══════════════════════════════════════════════════════
+//
+// Что это: Spring Boot — это фреймворк для создания
+//          серверов на языке Java. Он автоматически
+//          настраивает маршрутизацию и обработку запросов.
+//
+// Аннотации — это подсказки для Spring:
+//   @RestController — этот класс обрабатывает HTTP-запросы
+//   @RequestMapping — базовый путь для всех маршрутов
+//   @GetMapping — обработчик GET-запроса
+//   @PreAuthorize — проверка прав доступа
+// ═══════════════════════════════════════════════════════
 
-@RestController
-@RequestMapping("/account")
+@RestController                       // Этот класс = обработчик HTTP-запросов
+@RequestMapping("/account")           // Все маршруты начинаются с /account
 public class AccountController {
 
-    @GetMapping("/home")
-    @PreAuthorize("isAuthenticated()")
+    // ── Защищённый маршрут — профиль пользователя ──
+    // Полный путь: /account + /home = /account/home
+    @GetMapping("/home")              // Обрабатывает GET-запрос к /account/home
+    @PreAuthorize("isAuthenticated()") // Только для залогиненных!
+                                       // Если не залогинен → 403 (запрещено)
     public ResponseEntity<UserData> accountHome(
             @AuthenticationPrincipal User user) {
-        UserData data = new UserData(
-            user.getEmail(),
-            user.getApiKey(),
-            user.getBalance()
+                                       // @AuthenticationPrincipal = текущий
+                                       // залогиненный пользователь (из cookie)
+        UserData data = new UserData(   // Создаём объект с данными
+            user.getEmail(),            // Email пользователя
+            user.getApiKey(),           // Его секретный API-ключ
+            user.getBalance()           // Баланс аккаунта
         );
-        return ResponseEntity.ok(data);
-        // ↑ Нет Cache-Control: no-store!
+        return ResponseEntity.ok(data); // Вернуть 200 OK + данные как JSON
+        // ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+        // ↑ Spring Boot по умолчанию НЕ добавляет этот заголовок
+        // ↑ Кэш-сервер может сохранить ответ
+        //
+        // КАК ИСПРАВИТЬ:
+        //   return ResponseEntity.ok()
+        //       .cacheControl(CacheControl.noStore())
+        //       .body(data);
     }
 }
 
-// Spring MVC URL处理:
-// /account/home;.css → матчит /account/home
-//   (semicolon — matrix parameter, игнорируется)
-// /account/home%00.css → зависит от сервера (Tomcat vs Undertow)
-//   Tomcat: обрезает по null byte → /account/home
-//   Undertow: может вернуть 400`,
+// ═══ Как Spring MVC обрабатывает спецсимволы ═══
+// Spring MVC работает поверх сервера приложений (Tomcat/Undertow)
+//
+// 1. Точка с запятой (;) — matrix-параметры:
+//    /account/home;.css
+//    → Spring видит ; — это "matrix parameter" (доп. параметр пути)
+//    → Обрезает ;.css → маршрут /account/home
+//    → СОВПАДАЕТ → возвращает профиль!
+//    → Но прокси видит .css → кэширует!
+//
+// 2. Null-байт (%00):
+//    /account/home%00.css
+//    → Зависит от сервера:
+//      Tomcat: обрезает по null-байту → /account/home → СОВПАДАЕТ!
+//      Undertow: может вернуть 400 (плохой запрос)
+//
+// Вывод: ; и %00 — самые опасные разделители для Spring Boot`,
 
-  ruby: `# app.rb — Ruby on Rails сервер
-# Обработка URL и маршрутизация
+  ruby: `# ═══════════════════════════════════════════════════════
+# app.rb — Ruby on Rails сервер
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Ruby on Rails (или просто Rails) — это фреймворк
+#          для создания веб-приложений на языке Ruby.
+#          Он автоматически обрабатывает маршрутизацию,
+#          базу данных и отображение страниц.
+#
+# Особенность Rails: точка в URL означает формат ответа
+#   /account/home    → формат по умолчанию (HTML)
+#   /account/home.json → формат JSON
+#   /account/home.css  → формат CSS (если есть шаблон)
+# ═══════════════════════════════════════════════════════
 
+# ── Маршруты (routes) ──
+# Маршрут — это правило: какой URL → какой обработчик
 Rails.application.routes.draw do
-  # Защищённый маршрут
-  get '/account/home', to: 'accounts#home'
-  get '/profile', to: 'profiles#show'
+  get '/account/home', to: 'accounts#home'   # /account/home → AccountsController.home
+  get '/profile', to: 'profiles#show'         # /profile → ProfilesController.show
 end
 
+# ── Контроллер — обработчик запроса ──
+# before_action — фильтр: выполнить ДО обработки запроса
+# authenticate_user! — проверяет, что пользователь залогинен
 class AccountsController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_user!  # Если не залогинен → редирект на логин
 
-  def home
-    render json: {
-      username: current_user.email,
-      api_key: current_user.api_key,
-      balance: current_user.balance
+  def home                           # Обработчик маршрута /account/home
+    render json: {                   # Вернуть данные как JSON
+      username: current_user.email,  # Email текущего пользователя
+      api_key: current_user.api_key, # Его секретный API-ключ
+      balance: current_user.balance  # Баланс аккаунта
     }
-    # ↑ Нет Cache-Control: no-store!
+    # ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+    # ↑ Rails по умолчанию НЕ добавляет этот заголовок
+    # ↑ Кэш-сервер может сохранить ответ
+    #
+    # КАК ИСПРАВИТЬ:
+    #   response.headers['Cache-Control'] = 'no-store'
+    #   render json: {...}
   end
 end
 
-# Rails маршрутизатор:
-# /account/home.css → формат .css (respond_to)
-#   Если нет CSS шаблона → 406 Not Acceptable
-# /account/home%0a.css → зависит от Rack middleware
-#   Rack может обрезать по переводам строк`,
+# ═══ Как Rails обрабатывает спецсимволы ═══
+# Rails работает поверх Rack — прослойки между сервером и приложением
+#
+# 1. Точка в URL = формат ответа:
+#    /account/home.css
+#    → Rails видит .css → пытается найти CSS-шаблон
+#    → Если шаблона нет → 406 Not Acceptable
+#    → Если шаблон есть → вернёт CSS (не данные!)
+#
+# 2. Перевод строки (%0a):
+#    /account/home%0a.css
+#    → Зависит от Rack middleware
+#    → Rack МОЖЕТ обрезать путь по переводу строки
+#    → Тогда: /account/home → маршрут СОВПАДАЕТ → профиль!
+#    → Но прокси видит .css → кэширует!
+#
+# 3. Точка с запятой (;):
+#    → Rails может интерпретировать как часть пути
+#    → Зависит от версии и настроек
+#
+# Вывод: Rails уязвим через %0a, если Rack обрезает путь`,
 }
 
 const EXAMPLE_URLS = [
