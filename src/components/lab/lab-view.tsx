@@ -791,6 +791,47 @@ function CodeBlock({ code, title, icon }: { code: string; title: string; icon: R
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // Parse code lines to highlight comments
+  const renderCode = () => {
+    const lines = code.split('\n')
+    return lines.map((line, i) => {
+      const trimmed = line.trimStart()
+      // Comment patterns: # ..., // ..., /* ... */, <!-- ... -->
+      const isComment = /^(#|\/\/|\/\*|\*|<!--)/.test(trimmed) ||
+                        trimmed.startsWith('* ') ||
+                        trimmed.startsWith('═') ||
+                        trimmed.startsWith('──')
+      // Inline comment after code: e.g. `cache: true  # comment`
+      const inlineCommentMatch = line.match(/^(.*?)(\s+(#|\/\/)\s+.*)$/)
+
+      if (isComment) {
+        return (
+          <div key={i} className="comment-line">
+            {line}
+            {'\n'}
+          </div>
+        )
+      }
+
+      if (inlineCommentMatch && inlineCommentMatch[2]) {
+        return (
+          <div key={i}>
+            <span className="code-content">{inlineCommentMatch[1]}</span>
+            <span className="comment-line">{inlineCommentMatch[2]}</span>
+            {'\n'}
+          </div>
+        )
+      }
+
+      return (
+        <div key={i}>
+          {line}
+          {'\n'}
+        </div>
+      )
+    })
+  }
+
   return (
     <Card className="border-border overflow-hidden">
       <CardHeader className="p-3 sm:p-4 pb-2">
@@ -807,7 +848,7 @@ function CodeBlock({ code, title, icon }: { code: string; title: string; icon: R
       </CardHeader>
       <CardContent className="px-0 pb-0">
         <pre className="px-3 sm:px-4 pb-3 sm:pb-4 text-[10px] sm:text-xs font-mono text-muted-foreground overflow-x-auto leading-relaxed whitespace-pre">
-          <code>{code}</code>
+          <code>{renderCode()}</code>
         </pre>
       </CardContent>
     </Card>

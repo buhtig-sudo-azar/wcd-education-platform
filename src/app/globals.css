@@ -128,7 +128,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3, h4, h5, h6 {
+  /* Gothic font for headings */
+  h1, h2, h3 {
+    font-family: var(--font-gothic), 'UnifrakturMaguntia', cursive;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  h4, h5, h6 {
     letter-spacing: -0.02em;
     font-weight: 700;
     text-wrap: balance;
@@ -195,4 +201,21 @@
 }
 .animate-pulse-ring {
   animation: pulse-ring 2s ease-out infinite;
+}
+
+/* ─── Code comment highlighting ─── */
+/* Comments in code blocks — smooth italic serif style */
+.comment-line {
+  font-style: italic;
+  font-family: var(--font-geist-sans), Georgia, 'Times New Roman', serif;
+  color: oklch(0.62 0.06 165);
+  opacity: 0.85;
+}
+.dark .comment-line {
+  color: oklch(0.72 0.05 165);
+  opacity: 0.7;
+}
+/* Code content (non-comment) — standard mono */
+.code-content {
+  color: var(--foreground);
 }
