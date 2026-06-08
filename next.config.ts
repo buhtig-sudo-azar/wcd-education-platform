@@ -1,8 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Убираем output: "standalone" — он не нужен для Vercel деплоя
-  // Standalone нужен только для Docker-контейнеров
+  // SPA fallback: все маршруты кроме API, статики и _next
+  // перенаправляются на главную страницу, где клиентский роутер работает
+  async rewrites() {
+    return [
+      {
+        source: "/:path((?!api|_next|favicon|static|.*\\..*).*)*",
+        destination: "/",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
