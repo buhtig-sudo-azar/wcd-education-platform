@@ -54,3 +54,7 @@ prompt
 
 # Bun
 bun.lock
+-e 
+# AI platform artifacts
+Caddyfile
+worklog.md
