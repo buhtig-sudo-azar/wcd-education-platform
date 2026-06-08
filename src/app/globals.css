@@ -123,15 +123,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-size: clamp(15px, 1.125vw + 8px, 18px);
+    font-size: 18px;
     line-height: 1.75;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
-    font-variant-ligatures: common-ligatures contextual;
-    overflow-wrap: break-word;
-    word-break: break-word;
   }
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
@@ -200,14 +195,4 @@
 }
 .animate-pulse-ring {
   animation: pulse-ring 2s ease-out infinite;
-}
-
-/* Responsive font scale */
-@media (max-width: 640px) {
-  body {
-    line-height: 1.65;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.015em;
-  }
 }
