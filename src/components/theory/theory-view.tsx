@@ -16,6 +16,12 @@ import {
   Split,
   GitBranch,
   AlertTriangle,
+  Settings,
+  FileCode,
+  Cloud,
+  Code,
+  Layers,
+  Shield,
 } from 'lucide-react'
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -26,6 +32,12 @@ const iconMap: Record<string, React.ReactNode> = {
   Split: <Split className="h-4 w-4 sm:h-5 sm:w-5" />,
   GitBranch: <GitBranch className="h-4 w-4 sm:h-5 sm:w-5" />,
   AlertTriangle: <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />,
+  Settings: <Settings className="h-4 w-4 sm:h-5 sm:w-5" />,
+  FileCode: <FileCode className="h-4 w-4 sm:h-5 sm:w-5" />,
+  Cloud: <Cloud className="h-4 w-4 sm:h-5 sm:w-5" />,
+  Code: <Code className="h-4 w-4 sm:h-5 sm:w-5" />,
+  Layers: <Layers className="h-4 w-4 sm:h-5 sm:w-5" />,
+  Shield: <Shield className="h-4 w-4 sm:h-5 sm:w-5" />,
 }
 
 export function TheoryView() {
@@ -43,9 +55,10 @@ export function TheoryView() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <Badge variant="secondary" className="text-xs sm:text-sm">7 разделов</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">{theorySections.length} разделов</Badge>
           <Badge variant="secondary" className="text-xs sm:text-sm">Для начинающих</Badge>
           <Badge variant="secondary" className="text-xs sm:text-sm">PortSwigger Academy</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">Серверные конфигурации</Badge>
         </div>
       </div>
 
@@ -65,17 +78,14 @@ export function TheoryView() {
             {/* TRIGGER — only this area is clickable, cursor-pointer is native */}
             <AccordionTrigger className="py-3 sm:py-4 hover:no-underline">
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-xs sm:text-sm font-bold shrink-0 ${
-                  /* We can't easily detect open state here for styling, so use group */
-                  ''
-                }`}>
+                <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-xs sm:text-sm font-bold shrink-0">
                   {index + 1}
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <div className="text-emerald-400 shrink-0">
                     {iconMap[section.icon]}
                   </div>
-                  <span className="text-base sm:text-lg font-semibold truncate text-foreground">{section.title}</span>
+                  <span className="text-sm sm:text-base lg:text-lg font-semibold truncate text-foreground">{section.title}</span>
                 </div>
               </div>
             </AccordionTrigger>
@@ -125,7 +135,7 @@ function MarkdownContent({ content }: { content: string }) {
     const parts = text.split(/`([^`]+)`/g)
     return parts.map((part, i) =>
       i % 2 === 1 ? (
-        <code key={i} className="px-1.5 sm:px-2 py-0.5 rounded bg-muted text-emerald-400 text-xs sm:text-sm font-mono">{part}</code>
+        <code key={i} className="px-1 sm:px-2 py-0.5 rounded bg-muted text-emerald-400 text-xs sm:text-sm font-mono break-all">{part}</code>
       ) : (
         part
       )
@@ -151,12 +161,12 @@ function MarkdownContent({ content }: { content: string }) {
     } else if (inTable) {
       inTable = false
       elements.push(
-        <div key={i} className="overflow-x-auto my-3 sm:my-4">
-          <table className="w-full text-xs sm:text-sm border-collapse">
+        <div key={i} className="overflow-x-auto my-3 sm:my-4 -mx-1 sm:mx-0">
+          <table className="w-full min-w-[500px] sm:min-w-0 text-xs sm:text-sm border-collapse">
             <thead>
               <tr className="border-b border-border">
                 {tableHeaders.map((h, hi) => (
-                  <th key={hi} className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-foreground font-semibold">{h}</th>
+                  <th key={hi} className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-foreground font-semibold whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -207,12 +217,12 @@ function MarkdownContent({ content }: { content: string }) {
 
   if (inTable) {
     elements.push(
-      <div key="final-table" className="overflow-x-auto my-3 sm:my-4">
-        <table className="w-full text-[10px] sm:text-xs border-collapse">
+      <div key="final-table" className="overflow-x-auto my-3 sm:my-4 -mx-1 sm:mx-0">
+        <table className="w-full min-w-[500px] sm:min-w-0 text-[10px] sm:text-xs border-collapse">
           <thead>
             <tr className="border-b border-border">
               {tableHeaders.map((h, hi) => (
-                <th key={hi} className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-foreground font-semibold">{h}</th>
+                <th key={hi} className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-foreground font-semibold whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>

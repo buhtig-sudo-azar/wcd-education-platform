@@ -35,7 +35,7 @@ import {
 /* ─────────────────────── types ─────────────────────── */
 
 interface ProxyConfig {
-  type: 'cloudflare' | 'nginx' | 'varnish'
+  type: 'cloudflare' | 'nginx' | 'varnish' | 'apache'
   cacheStaticExts: string[]
   cacheKey: 'full-url' | 'path-only' | 'normalized'
   normalizeUrl: boolean
@@ -44,7 +44,7 @@ interface ProxyConfig {
 }
 
 interface BackendConfig {
-  type: 'nodejs' | 'python' | 'java' | 'ruby'
+  type: 'nodejs' | 'python' | 'java' | 'ruby' | 'django' | 'laravel' | 'go' | 'dotnet'
   stripDelimiters: string[]
   ignoreAfterDelimiter: boolean
   treatDotAsFormat: boolean
@@ -106,6 +106,14 @@ const PROXY_CONFIGS: Record<string, ProxyConfig> = {
     respectCacheControl: false,
     defaultTtl: 7200,
   },
+  apache: {
+    type: 'apache',
+    cacheStaticExts: ['css', 'js', 'png', 'jpg', 'gif', 'svg', 'ico', 'woff', 'woff2'],
+    cacheKey: 'full-url',
+    normalizeUrl: false,
+    respectCacheControl: true,
+    defaultTtl: 3600,
+  },
 }
 
 const BACKEND_CONFIGS: Record<string, BackendConfig> = {
@@ -129,9 +137,33 @@ const BACKEND_CONFIGS: Record<string, BackendConfig> = {
   },
   ruby: {
     type: 'ruby',
-    stripDelimiters: ['%0a', '%0d'],
+    stripDelimiters: ['%0a', '%0d', '%00'],
     ignoreAfterDelimiter: false,
     treatDotAsFormat: true,
+  },
+  django: {
+    type: 'django',
+    stripDelimiters: ['%00'],
+    ignoreAfterDelimiter: true,
+    treatDotAsFormat: false,
+  },
+  laravel: {
+    type: 'laravel',
+    stripDelimiters: ['%00', '%0a'],
+    ignoreAfterDelimiter: true,
+    treatDotAsFormat: false,
+  },
+  go: {
+    type: 'go',
+    stripDelimiters: [],
+    ignoreAfterDelimiter: false,
+    treatDotAsFormat: false,
+  },
+  dotnet: {
+    type: 'dotnet',
+    stripDelimiters: ['%00'],
+    ignoreAfterDelimiter: true,
+    treatDotAsFormat: false,
   },
 }
 
@@ -395,6 +427,74 @@ sub vcl_deliver {
     # Как использовать: откройте DevTools → Network →
     # посмотрите заголовок X-Cache в ответе
 }`,
+
+  apache: `# ═══════════════════════════════════════════════════════
+# httpd.conf — Конфигурация Apache HTTP Server
+# ═══════════════════════════════════════════════════════
+#
+# КТО КЭШИРУЕТ: Apache через модуль mod_cache.
+#                Кэширует ТОЛЬКО если mod_cache включён.
+#                Без модуля — просто проксирует запросы.
+#
+# ПОЧЕМУ УЯЗВИМ: Apache НЕ нормализует URL агрессивно,
+#                как Nginx. Символы %0f, %00, %0a могут
+#                пройти через mod_rewrite без изменений.
+#                mod_cache проверяет расширение URL:
+#                .css? Кэшируем! Что внутри — не смотрит.
+#
+# Что это: Apache — один из старейших веб-серверов.
+#          Его модульная архитектура позволяет добавлять
+#          кэширование через модули mod_cache и
+#          mod_cache_disk.
+#
+# Зачем: Как и другие прокси, Apache кэширует для
+#        ускорения отдачи статических файлов.
+# ═══════════════════════════════════════════════════════
+
+# ── Включаем модуль кэширования ──
+LoadModule cache_module modules/mod_cache.so
+LoadModule cache_disk_module modules/mod_cache_disk.so
+
+# ── Настройка дискового кэша ──
+# Где хранить кэшированные файлы на диске
+CacheRoot /var/cache/httpd
+CacheDirLevels 2
+CacheDirLength 1
+CacheMaxFileSize 10000000    # Макс. размер файла: 10 МБ
+
+# ── Правила кэширования ──
+# CacheEnable: включить кэширование для URL
+# disk: сохранять на диск
+# "/": для всех URL (опасно!)
+CacheEnable disk /
+
+# ═══ ОПАСНЫЕ ДИРЕКТИВЫ, которые делают Apache уязвимым: ═══
+# CacheIgnoreCacheControl On   ← Игнорировать Cache-Control!
+# CacheStoreNoStore On         ← Кэшировать даже no-store!
+# CacheIgnoreHeaders Set-Cookie ← Удалить Set-Cookie из кэша!
+#
+# Если эти директивы включены — Apache кэширует ВСЁ,
+# включая персональные данные, и отдаёт их всем.
+
+# ── mod_rewrite: обработка URL ──
+# mod_rewrite применяется ДО mod_cache
+# Но Apache НЕ нормализует URL автоматически
+RewriteEngine On
+# URL-кодированные спецсимволы проходят как есть:
+# /account/home%0f.css → остаётся %0f в пути
+# mod_cache видит .css → кэширует!
+
+# ── Безопасная настройка: отключить кэш для динамических ──
+# CacheDisable /account/
+# CacheDisable /api/
+# CacheDisable /profile/
+# ↑ Это частичная защита, но %0f может обойти
+#   проверку пути, потому что URL кодирован
+
+# ═══ СРАВНЕНИЕ С NGINX ═══
+# Nginx: нормализует URL → удаляет %0f → /home.css
+# Apache: НЕ нормализует → /account/home%0f.css → .css = кэш!
+# Apache БОЛЕЕ уязвим к WCD, чем Nginx`,
 }
 
 const BACKEND_CONFIG_FILES: Record<string, string> = {
@@ -668,6 +768,242 @@ end
 #    → Зависит от версии и настроек
 #
 # Вывод: Rails уязвим через %0a, если Rack обрезает путь`,
+
+  django: `# ═══════════════════════════════════════════════════════
+# views.py — Python + Django сервер
+# ═══════════════════════════════════════════════════════
+#
+# Что это: Django — полноценный веб-фреймворк для Python.
+#          Встроенная система маршрутизации URL, ORM,
+#          middleware, шаблоны — всё включено.
+#
+# Как работает маршрутизация:
+#   path('url/', view_function) — точное совпадение
+#   re_path(r'^url/', view) — регулярное выражение
+#   Django ищет ПЕРВОЕ совпадение в urls.py
+# ═══════════════════════════════════════════════════════
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+
+# ── Защищённый маршрут — профиль пользователя ──
+@login_required                    # Только для залогиненных!
+def account_home(request):         # request — объект HTTP-запроса
+    user = request.user            # Текущий пользователь (из сессии)
+    return JsonResponse({          # Вернуть как JSON-ответ
+        'username': user.email,    # Email пользователя
+        'api_key': user.api_key,   # Секретный API-ключ
+        'balance': user.balance,   # Баланс аккаунта
+    })
+    # ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+    # ↑ Django НЕ добавляет его по умолчанию
+    #
+    # КАК ИСПРАВИТЬ:
+    #   from django.views.decorators.cache import never_cache
+    #   @never_cache  ← Добавит Cache-Control: no-store
+    #   def account_home(request):
+    #       ...
+
+# ═══ Как Django обрабатывает спецсимволы в URL ═══
+# Django декодирует URL через urllib.parse.unquote.
+# Но Django ищет ТОЧНОЕ совпадение маршрута:
+#   Маршрут: /account/home
+#   URL /account/home%0f.css → декодируется → /account/home\\x0f.css
+#   → НЕ совпадает с /account/home → 404!
+#
+# НО: если использовать catch-all или re_path:
+#   re_path(r'^account/(.*)$', account_view)
+#   → /account/home%0f.css СОВПАДЁТ → уязвимость!
+#
+# Null-байт (%00):
+#   /account/home%00.css
+#   → Python обрезает по null-байту: /account/home
+#   → Маршрут СОВПАДАЕТ → возвращает профиль!
+#   → Прокси видит .css → кэширует!
+#
+# Вывод: Django безопаснее Flask, но %00 — опасен`,
+
+  laravel: `// ═══════════════════════════════════════════════════════
+// AccountController.php — PHP + Laravel сервер
+// ═══════════════════════════════════════════════════════
+//
+// Что это: Laravel — самый популярный PHP-фреймворк.
+//          Использует Symfony Routing Component для
+//          обработки URL.
+//
+// Как работает маршрутизация:
+//   Route::get('/url', [Controller::class, 'method'])
+//   Laravel ищет точное совпадение маршрута.
+// ═══════════════════════════════════════════════════════
+
+use Illuminate\\Http\\Request;
+use App\\Http\\Controllers\\Controller;
+
+class AccountController extends Controller
+{
+    // ── Защищённый маршрут — профиль пользователя ──
+    // middleware('auth') — проверяет, что пользователь залогинен
+    public function __construct()
+    {
+        $this->middleware('auth');  // Все методы — только для залогиненных
+    }
+
+    public function home()
+    {
+        $user = auth()->user();    // Текущий пользователь (из сессии)
+        return response()->json([  // Вернуть как JSON-ответ
+            'username' => $user->email,     // Email
+            'api_key'  => $user->api_key,   // Секретный API-ключ
+            'balance'  => $user->balance,   // Баланс
+        ]);
+        // ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+        // ↑ Laravel НЕ добавляет его по умолчанию
+        //
+        // КАК ИСПРАВИТЬ:
+        //   return response()->json([...])
+        //       ->header('Cache-Control', 'no-store');
+    }
+}
+
+// ═══ Как Laravel обрабатывает спецсимволы в URL ═══
+// PHP обрезает строки по null-байту (унаследовано от C):
+//   /account/home%00.css → обрезает → /account/home
+//   → Маршрут СОВПАДАЕТ → возвращает профиль!
+//   → Прокси видит .css → кэширует!
+//
+// %0a (перевод строки):
+//   /account/home%0a.css
+//   → Зависит от PHP-версии и настроек
+//   → PHP 8+ более строг к спецсимволам
+//
+// Точка в URL:
+//   /account/home.css
+//   → Laravel ищет точное совпадение маршрута
+//   → /account/home.css НЕ совпадает с /account/home → 404
+//
+// Вывод: Laravel уязвим через %00, как и другие PHP-приложения`,
+
+  go: `// ═══════════════════════════════════════════════════════
+// main.go — Go (net/http) сервер
+// ═══════════════════════════════════════════════════════
+//
+// Что это: Go имеет встроенный HTTP-сервер в стандартной
+//          библиотеке net/http. Не нужен фреймворк!
+//
+// Как работает маршрутизация:
+//   http.HandleFunc("/path", handler)
+//   ServeMux ищет точное совпадение или最长ный префикс.
+// ═══════════════════════════════════════════════════════
+
+package main
+
+import (
+    "encoding/json"
+    "net/http"
+)
+
+// ── Защищённый маршрут — профиль пользователя ──
+func accountHome(w http.ResponseWriter, r *http.Request) {
+    // Проверка авторизации через middleware
+    user := getUserFromSession(r)  // Извлечь из cookie
+    if user == nil {
+        http.Error(w, "Unauthorized", 401)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]string{
+        "username": user.Email,     // Email пользователя
+        "api_key":  user.APIKey,    // Секретный API-ключ
+        "balance":  user.Balance,   // Баланс аккаунта
+    })
+    // ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+    // ↑ net/http НЕ добавляет его автоматически
+    //
+    // КАК ИСПРАВИТЬ:
+    //   w.Header().Set("Cache-Control", "no-store")
+    //   ДО вызова json.NewEncoder
+}
+
+func main() {
+    mux := http.NewServeMux()
+    mux.HandleFunc("/account/home", accountHome)
+    http.ListenAndServe(":8080", mux)
+}
+
+// ═══ Как Go обрабатывает спецсимволы в URL ═══
+// Go СТРОГО парсит URL через net/url:
+//   /account/home%0f.css
+//   → Декодирует %0f, но ServeMux ищет ТОЧНОЕ совпадение
+//   → /account/home\\x0f.css НЕ совпадает с /account/home
+//   → 404! Атака НЕ срабатывает!
+//
+// Null-байт (%00):
+//   → Go НЕ обрезает строки по null-байту
+//   → ServeMux: /account/home%00.css ≠ /account/home
+//   → 404! Атака НЕ срабатывает!
+//
+// Вывод: Go — один из САМЫХ безопасных фреймворков
+//        благодаря строгому роутингу и парсингу URL`,
+
+  dotnet: `// ═══════════════════════════════════════════════════════
+// AccountController.cs — ASP.NET Core сервер
+// ═══════════════════════════════════════════════════════
+//
+// Что это: ASP.NET Core — фреймворк от Microsoft для
+//          платформы .NET. Встроенный dependency injection,
+//          строгий роутинг, middleware pipeline.
+//
+// Как работает маршрутизация:
+//   [Route("api/[controller]")] — атрибут маршрута
+//   [HttpGet("path")] — обработчик GET-запроса
+// ═══════════════════════════════════════════════════════
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("account")]
+[Authorize]   // Только для залогиненных!
+public class AccountController : ControllerBase
+{
+    // ── Защищённый маршрут — профиль пользователя ──
+    [HttpGet("home")]   // GET /account/home
+    public IActionResult Home()
+    {
+        var user = GetUser();  // Из Claims (JWT/cookie)
+        return Json(new
+        {
+            username = user.Email,    // Email
+            api_key = user.ApiKey,    // Секретный API-ключ
+            balance = user.Balance    // Баланс
+        });
+        // ↑ ВНИМАНИЕ! Нет Cache-Control: no-store!
+        // ↑ ASP.NET Core НЕ добавляет автоматически
+        //
+        // КАК ИСПРАВИТЬ:
+        //   Response.Headers["Cache-Control"] = "no-store";
+    }
+}
+
+// ═══ Как ASP.NET Core обрабатывает спецсимволы ═══
+// Null-байт (%00):
+//   /account/home%00.css
+//   → ASP.NET ОТКЛОНЯЕТ null-байты → 400 Bad Request!
+//   → Атака НЕ срабатывает!
+//
+// Точка с запятой (;):
+//   /account/home;.css
+//   → ASP.NET НЕ обрезает по ; (в отличие от Spring)
+//   → /account/home;.css НЕ совпадает с /account/home
+//   → 404! Атака НЕ срабатывает!
+//
+// %0f:
+//   → Строгий роутинг: /account/home%0f.css ≠ /account/home
+//   → 404! Атака НЕ срабатывает!
+//
+// Вывод: ASP.NET Core — один из САМЫХ безопасных фреймворков
+//        благодаря строгому роутингу и отклонению спецсимволов`,
 }
 
 const EXAMPLE_URLS = [
@@ -1310,17 +1646,19 @@ export function LabView() {
                   <CardTitle className="text-sm sm:text-base font-semibold">Прокси-сервер (Cache)</CardTitle>
                 </div>
                 <div className="flex gap-2">
-                  {(['cloudflare', 'nginx', 'varnish'] as const).map(type => (
-                    <Button
-                      key={type}
-                      variant={proxyType === type ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setProxyType(type)}
-                      className={`text-[10px] sm:text-xs ${proxyType === type ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30' : ''}`}
-                    >
-                      {type === 'cloudflare' ? 'Cloudflare' : type === 'nginx' ? 'Nginx' : 'Varnish'}
-                    </Button>
-                  ))}
+                  <div className="flex gap-2 flex-wrap">
+                    {(['cloudflare', 'nginx', 'varnish', 'apache'] as const).map(type => (
+                      <Button
+                        key={type}
+                        variant={proxyType === type ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setProxyType(type)}
+                        className={`text-[10px] sm:text-xs ${proxyType === type ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30' : ''}`}
+                      >
+                        {type === 'cloudflare' ? 'Cloudflare' : type === 'nginx' ? 'Nginx' : type === 'varnish' ? 'Varnish' : 'Apache'}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1344,7 +1682,9 @@ export function LabView() {
                       ? 'Cloudflare определяет тип ресурса по расширению файла в URL. Символы вроде %0f не удаляются из URL перед проверкой, поэтому /home%0f.css выглядит как CSS-файл. Ключ кэша использует полный URL без нормализации.'
                       : proxyConfig.type === 'nginx'
                         ? 'Nginx нормализует URL перед проверкой location, но ключ кэша может использовать нормализованный путь. Однако если upstream получает оригинальный URL, расхождение всё равно возможно при определённых конфигурациях proxy_pass.'
-                        : 'Varnish использует req.url как есть для хеширования. Если VCL-правило проверяет расширение регулярным выражением, URL с %0f.css попадёт под правило для статических файлов. Varnish не нормализует URL автоматически.'}
+                        : proxyConfig.type === 'apache'
+                          ? 'Apache не нормализует URL агрессивно, как Nginx. Символы %0f, %00, %0a проходят через mod_rewrite без изменений. mod_cache проверяет расширение URL (.css = кэшировать) без проверки Content-Type. Если включены CacheIgnoreCacheControl или CacheStoreNoStore — Apache кэширует вообще всё.'
+                          : 'Varnish использует req.url как есть для хеширования. Если VCL-правило проверяет расширение регулярным выражением, URL с %0f.css попадёт под правило для статических файлов. Varnish не нормализует URL автоматически.'}
                   </p>
                 </div>
               </div>
@@ -1352,7 +1692,7 @@ export function LabView() {
               {/* Config file */}
               <CodeBlock
                 code={PROXY_CONFIG_FILES[proxyType]}
-                title={`Конфигурация ${proxyType === 'cloudflare' ? 'Cloudflare' : proxyType === 'nginx' ? 'Nginx' : 'Varnish'}`}
+                title={`Конфигурация ${proxyType === 'cloudflare' ? 'Cloudflare' : proxyType === 'nginx' ? 'Nginx' : proxyType === 'apache' ? 'Apache' : 'Varnish'}`}
                 icon={<FileCode className="h-3.5 w-3.5 text-amber-400" />}
               />
             </CardContent>
@@ -1367,17 +1707,19 @@ export function LabView() {
                   <CardTitle className="text-sm sm:text-base font-semibold">Сервер-источник (Backend)</CardTitle>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {(['nodejs', 'python', 'java', 'ruby'] as const).map(type => (
-                    <Button
-                      key={type}
-                      variant={backendType === type ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setBackendType(type)}
-                      className={`text-[10px] sm:text-xs ${backendType === type ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30' : ''}`}
-                    >
-                      {type === 'nodejs' ? 'Node.js' : type === 'python' ? 'Python' : type === 'java' ? 'Java' : 'Ruby'}
-                    </Button>
-                  ))}
+                  <div className="flex gap-2 flex-wrap">
+                    {(['nodejs', 'python', 'java', 'ruby', 'django', 'laravel', 'go', 'dotnet'] as const).map(type => (
+                      <Button
+                        key={type}
+                        variant={backendType === type ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setBackendType(type)}
+                        className={`text-[10px] sm:text-xs ${backendType === type ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30' : ''}`}
+                      >
+                        {type === 'nodejs' ? 'Node.js' : type === 'python' ? 'Flask' : type === 'java' ? 'Spring' : type === 'ruby' ? 'Rails' : type === 'django' ? 'Django' : type === 'laravel' ? 'Laravel' : type === 'go' ? 'Go' : '.NET'}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1398,10 +1740,18 @@ export function LabView() {
                     {backendConfig.type === 'nodejs'
                       ? 'Express декодирует URL и пытается сопоставить маршрут. Если путь содержит непечатные символы (%0f), маршрут не совпадает напрямую. Но если прокси обрезает разделитель ПЕРЕД передачей на backend, Express получит чистый путь /account/home и вернёт данные пользователя — без заголовка Cache-Control: no-store.'
                       : backendConfig.type === 'python'
-                        ? 'Flask/Django декодируют URL и ищут точное совпадение маршрута. Разделители %0a и %00 обрезают путь, но %0f — нет. Если прокси передаёт обрезанный путь, Flask возвращает данные пользователя без Cache-Control: no-store.'
+                        ? 'Flask декодирует URL и ищёт точное совпадение маршрута. Разделители %0a и %00 обрезают путь, но %0f — нет. Если прокси передаёт обрезанный путь, Flask возвращает данные пользователя без Cache-Control: no-store.'
                         : backendConfig.type === 'java'
                           ? 'Spring MVC обрабатывает точку с запятой как matrix-параметры и игнорирует их при маршрутизации. Null-byte (%00) обрезает путь в Tomcat. Это создаёт расхождение: прокси видит .css, а Spring матчит маршрут без расширения.'
-                          : 'Rails интерпретирует точку в пути как спецификатор формата (format). /account/home.css пытается найти CSS-шаблон. Но если прокси обрезает разделитель до передачи запроса, Rails может обработать путь как /account/home и вернуть JSON.'}
+                          : backendConfig.type === 'ruby'
+                            ? 'Rails интерпретирует точку в пути как спецификатор формата (format). /account/home.css пытается найти CSS-шаблон. Но если прокси обрезает разделитель до передачи запроса, Rails может обработать путь как /account/home и вернуть JSON.'
+                            : backendConfig.type === 'django'
+                              ? 'Django ищет ТОЧНОЕ совпадение маршрута. Спецсимволы вроде %0f не дают маршруту совпасть. Но null-байт (%00) обрезает путь, и /account/home%00.css превращается в /account/home — маршрут совпадает, и Django возвращает профиль без Cache-Control.'
+                              : backendConfig.type === 'laravel'
+                                ? 'Laravel (PHP) обрезает строки по null-байту — унаследованное поведение от C. /account/home%00.css превращается в /account/home. Маршрут совпадает, и Laravel возвращает профиль без Cache-Control: no-store.'
+                                : backendConfig.type === 'go'
+                                  ? 'Go СТРОГО парсит URL через net/url. ServeMux ищет точное совпадение маршрута — спецсимволы не дают маршруту совпасть. Go НЕ обрезает строки по null-байту. Это один из самых безопасных фреймворков: атака WCD через delimiter discrepancy вряд ли сработает.'
+                                  : 'ASP.NET Core строго обрабатывает URL и отклоняет null-байты с ошибкой 400. Точка с запятой НЕ обрезается (в отличие от Spring). Строгий роутинг делает ASP.NET Core одним из самых безопасных фреймворков.'}
                   </p>
                 </div>
               </div>
@@ -1409,7 +1759,7 @@ export function LabView() {
               {/* Backend config file */}
               <CodeBlock
                 code={BACKEND_CONFIG_FILES[backendType]}
-                title={`Код сервера (${backendConfig.type === 'nodejs' ? 'Node.js' : backendConfig.type === 'python' ? 'Python' : backendConfig.type === 'java' ? 'Java' : 'Ruby'})`}
+                title={`Код сервера (${backendConfig.type === 'nodejs' ? 'Node.js' : backendConfig.type === 'python' ? 'Flask' : backendConfig.type === 'java' ? 'Spring' : backendConfig.type === 'ruby' ? 'Rails' : backendConfig.type === 'django' ? 'Django' : backendConfig.type === 'laravel' ? 'Laravel' : backendConfig.type === 'go' ? 'Go' : 'ASP.NET'})`}
                 icon={<FileCode className="h-3.5 w-3.5 text-blue-400" />}
               />
             </CardContent>

@@ -60,8 +60,12 @@ export function AboutView() {
               'Что такое delimiter discrepancies',
               'Как компоненты инфраструктуры интерпретируют URL',
               'Как происходит утечка конфиденциальных данных',
-              'Методы защиты от WCD-атак',
-              'Использование Burp Suite для тестирования',
+              'Конфигурация Nginx: proxy_cache и нормализация URL',
+              'Конфигурация Apache: mod_cache и обработка URL',
+              'Cloudflare: правила кэширования и настройки безопасности',
+              'Varnish: VCL и логика кэширования',
+              'Фреймворки: Express, Flask, Spring, Rails, Django, Laravel, Go, .NET',
+              'Методы защиты от WCD-атак и лучшие практики',
             ].map((item) => (
               <div key={item} className="flex items-start gap-1.5 sm:gap-2">
                 <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400 shrink-0 mt-0.5" />
