@@ -23,6 +23,7 @@ import {
   Layers,
   Shield,
 } from 'lucide-react'
+import { useCallback } from 'react'
 
 const iconMap: Record<string, React.ReactNode> = {
   Database: <Database className="h-4 w-4 sm:h-5 sm:w-5" />,
@@ -41,6 +42,19 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export function TheoryView() {
+  // Автопрокрутка к открытой секции аккордеона
+  const handleAccordionChange = useCallback((value: string) => {
+    if (!value) return
+    // Небольшая задержка, чтобы контент успел развернуться
+    setTimeout(() => {
+      const el = document.querySelector(`[data-state="open"][data-accordion-item]`)
+        ?? document.querySelector(`[data-state="open"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 150)
+  }, [])
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
       {/* Header */}
@@ -68,6 +82,7 @@ export function TheoryView() {
         type="single"
         collapsible
         defaultValue="what-is-cache"
+        onValueChange={handleAccordionChange}
         className="space-y-2.5 sm:space-y-3"
       >
         {theorySections.map((section, index) => (

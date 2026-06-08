@@ -58,3 +58,7 @@ bun.lock
 # AI platform artifacts
 Caddyfile
 worklog.md
+
+# test artifacts
+test-results/
+playwright-test.ts

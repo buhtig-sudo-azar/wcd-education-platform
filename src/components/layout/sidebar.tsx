@@ -31,14 +31,14 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-64 sm:w-72 border-r border-border bg-card transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+          'fixed top-0 left-0 z-50 h-full w-64 sm:w-72 border-r border-border bg-card transition-transform duration-300 md:translate-x-0 md:static md:z-auto',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -55,7 +55,7 @@ export function Sidebar() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground md:hidden"
           >
             <X className="h-5 w-5" />
           </button>

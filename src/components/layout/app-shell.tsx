@@ -14,21 +14,26 @@ import { useEffect, useRef } from 'react'
 
 export function AppShell() {
   const currentView = useNavigationStore(s => s.currentView)
+  const setSidebarOpen = useNavigationStore(s => s.setSidebarOpen)
   const mainRef = useRef<HTMLElement | null>(null)
 
-  // Автопрокрутка наверх при любой навигации
+  // Автопрокрутка наверх при любой навигации + закрытие сайдбара на мобильных
   useEffect(() => {
     if (mainRef.current) {
-      mainRef.current.scrollTo({ top: 0 })
+      mainRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [currentView])
+    // Закрываем сайдбар при навигации на экранах < md
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
+  }, [currentView, setSidebarOpen])
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main ref={mainRef} className="flex-1 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto scroll-smooth">
           {currentView === 'home' && <HomeView />}
           {currentView === 'theory' && <TheoryView />}
           {currentView === 'lab' && <LabView />}
