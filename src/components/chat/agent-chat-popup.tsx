@@ -96,8 +96,8 @@ export function AgentChatPopup() {
             bg-background border border-border shadow-2xl rounded-2xl overflow-hidden
             transition-all duration-300 ease-in-out
             ${isExpanded
-              ? 'sm:bottom-4 sm:right-4 sm:top-4 sm:w-[calc(100vw-2rem)] sm:max-h-[calc(100vh-2rem)] max-sm:inset-2 max-sm:max-h-[calc(100vh-1rem)]'
-              : 'sm:bottom-20 sm:right-4 sm:w-[340px] md:sm:w-[380px] sm:max-h-[560px] max-sm:inset-x-2 max-sm:bottom-20 max-sm:top-auto max-sm:max-h-[70vh]'
+              ? 'bottom-4 right-4 top-16 sm:top-[72px] w-[calc(100vw-2rem)] max-w-[700px] max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-88px)]'
+              : 'bottom-20 sm:bottom-24 right-2 sm:right-4 w-[calc(100vw-1rem)] max-w-[340px] md:max-w-[380px] top-16 sm:top-[72px] max-h-[calc(100vh-7rem)] sm:max-h-[560px]'
             }
             animate-in slide-in-from-bottom-4 fade-in duration-200
           `}
