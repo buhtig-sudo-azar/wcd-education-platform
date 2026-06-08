@@ -68,7 +68,7 @@ export function FloatingDock() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-center gap-2.5 sm:gap-3 pointer-events-none">
+    <div className="fixed bottom-20 right-4 sm:bottom-28 sm:right-6 z-50 flex flex-col-reverse items-center gap-2.5 sm:gap-3 pointer-events-none">
       {/* Agent button */}
       {showAgent && (
         <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
