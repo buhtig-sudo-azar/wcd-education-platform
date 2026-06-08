@@ -68,8 +68,21 @@ export function FloatingDock() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 sm:bottom-28 sm:right-6 z-50 flex flex-col-reverse items-center gap-2.5 sm:gap-3 pointer-events-none">
-      {/* Agent button */}
+    <div className="fixed right-4 sm:right-6 z-50 flex flex-col items-center gap-3 sm:gap-4 pointer-events-none"
+         style={{ bottom: 'calc(50% - 60px)' }}
+    >
+      {/* ScrollToTop button — ABOVE the agent */}
+      {scrollVisible && (
+        <button
+          onClick={scrollToTop}
+          aria-label="Наверх"
+          className="pointer-events-auto flex items-center justify-center h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background animate-in fade-in zoom-in-95 duration-200"
+        >
+          <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5" />
+        </button>
+      )}
+
+      {/* Agent button — BELOW the scroll button */}
       {showAgent && (
         <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
           {showTooltip && (
@@ -93,26 +106,6 @@ export function FloatingDock() {
           </button>
         </div>
       )}
-
-      {/* ScrollToTop button */}
-      <button
-        onClick={scrollToTop}
-        aria-label="Наверх"
-        className={cn(
-          'pointer-events-auto flex items-center justify-center',
-          'h-9 w-9 sm:h-11 sm:w-11 rounded-full',
-          'bg-primary text-primary-foreground shadow-lg',
-          'hover:shadow-xl hover:scale-110',
-          'active:scale-95',
-          'transition-all duration-300 ease-in-out',
-          'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background',
-          scrollVisible
-            ? 'translate-y-0 opacity-100'
-            : 'translate-y-4 opacity-0 pointer-events-none h-0 w-0 overflow-hidden'
-        )}
-      >
-        <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5" />
-      </button>
     </div>
   );
 }
