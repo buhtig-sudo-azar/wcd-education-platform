@@ -11,6 +11,9 @@ import Image from 'next/image';
 /**
  * FloatingDock — контейнер для кнопки «Наверх» и плавающего агента.
  * Агент появляется только на страницах theory и lab.
+ *
+ * ВАЖНО: все хуки (useState, useEffect, useCallback) ДОЛЖНЫ вызываться
+ * при КАЖДОМ рендере, без ранних return'ов. Иначе React error #310.
  */
 export function FloatingDock() {
   const currentView = useNavigationStore(s => s.currentView);
@@ -56,11 +59,6 @@ export function FloatingDock() {
     }
   }, [agentVisible]);
 
-  const showAgent = agent && hasAppeared && agentVisible;
-
-  // Если ничего не видно — не рендерим контейнер
-  if (!scrollVisible && !showAgent) return null;
-
   // Плавная прокрутка наверх с ease-out
   const scrollToTop = useCallback(() => {
     const main = document.querySelector('main');
@@ -91,6 +89,13 @@ export function FloatingDock() {
     setActiveCategory('wcd-expert');
     useNavigationStore.getState().setChatOpen(true);
   }, [setActiveCategory]);
+
+  const showAgent = agent && hasAppeared && agentVisible;
+
+  // ВАЖНО: НЕ делаем ранний return! Все хуки должны вызываться всегда.
+  // Ранний return после хуков = React error #310 (Invalid hook call)
+
+  if (!scrollVisible && !showAgent) return null;
 
   return (
     <div className="fixed z-50 flex flex-col-reverse items-center gap-3 pointer-events-none"
