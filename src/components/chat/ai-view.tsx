@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useChatStore } from '@/store/chat-store'
-import { wcdAgent } from '@/data/agent-data'
+import { wcdAgent, chatSystemPrompt } from '@/data/agent-data'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -16,7 +16,7 @@ import {
 export function AIView() {
   const {
     messages,
-    isStreaming,
+    isLoading,
     sendMessage,
     clearMessages,
     retryLastMessage,
@@ -31,8 +31,8 @@ export function AIView() {
   }, [messages])
 
   const handleSend = () => {
-    if (!input.trim() || isStreaming) return
-    sendMessage(input.trim())
+    if (!input.trim() || isLoading) return
+    sendMessage(input.trim(), chatSystemPrompt)
     setInput('')
   }
 
@@ -59,10 +59,10 @@ export function AIView() {
           </div>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" onClick={retryLastMessage} disabled={isStreaming || messages.length < 2} title="Повторить">
+          <Button variant="ghost" size="icon" onClick={retryLastMessage} disabled={isLoading || messages.length < 2} title="Повторить">
             <RotateCcw className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={clearMessages} disabled={isStreaming} title="Очистить">
+          <Button variant="ghost" size="icon" onClick={clearMessages} disabled={isLoading} title="Очистить">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -81,7 +81,7 @@ export function AIView() {
               {wcdAgent.suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
-                  onClick={() => sendMessage(suggestion)}
+                  onClick={() => sendMessage(suggestion, chatSystemPrompt)}
                   className="text-left px-3 py-2 rounded-lg border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors text-xs text-muted-foreground hover:text-foreground"
                 >
                   {suggestion}
@@ -138,14 +138,14 @@ export function AIView() {
             placeholder="Задайте вопрос о Web Cache Deception..."
             className="min-h-[44px] max-h-32 resize-none text-sm"
             rows={1}
-            disabled={isStreaming}
+            disabled={isLoading}
           />
           <Button
             onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isLoading}
             className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white shrink-0 self-end"
           >
-            {isStreaming ? (
+            {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Send className="h-4 w-4" />

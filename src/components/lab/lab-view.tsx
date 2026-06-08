@@ -30,7 +30,6 @@ import {
   XCircle,
   ChevronDown,
   User,
-  Hacker,
 } from 'lucide-react'
 
 /* ─────────────────────── types ─────────────────────── */

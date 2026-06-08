@@ -12,7 +12,7 @@ interface ChatState {
   setLoading: (loading: boolean) => void;
   setActiveCategory: (slug: string | null) => void;
   clearMessages: () => void;
-  sendMessage: (text: string, systemPrompt: string) => Promise<void>;
+  sendMessage: (text: string, systemPrompt: string, isRetry?: boolean) => Promise<void>;
   retryLastMessage: () => Promise<void>;
   setShowSuggestions: (show: boolean) => void;
 }
@@ -45,7 +45,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setActiveCategory: (slug) => set({ activeCategory: slug, showSuggestions: true }),
   clearMessages: () => set({ messages: [], showSuggestions: true }),
-  setShowSuggestions: (show) => set({ showSuggestions }),
+  setShowSuggestions: (show) => set({ showSuggestions: show }),
 
   retryLastMessage: async () => {
     if (!lastSendParams) return;
