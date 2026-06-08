@@ -20,7 +20,11 @@ export const metadata: Metadata = {
   keywords: ["Web Cache Deception", "WCD", "веб-безопасность", "кэширование", "CDN", "PortSwigger", "delimiter discrepancies"],
   authors: [{ name: "AZAR" }],
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 }
 
