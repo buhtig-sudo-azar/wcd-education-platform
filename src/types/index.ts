@@ -1,4 +1,4 @@
-export type ViewType = 'home' | 'theory' | 'lab' | 'ai' | 'about'
+export type ViewType = 'home' | 'theory' | 'lab' | 'about'
 
 export interface TheorySection {
   id: string

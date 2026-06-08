@@ -1,22 +1,30 @@
 'use client'
 
 import { useNavigationStore } from '@/store/navigation-store'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   ShieldAlert,
   BookOpen,
   FlaskConical,
-  Bot,
   ArrowRight,
   Zap,
   Server,
   Globe,
   Lock,
+  MessageCircle,
 } from 'lucide-react'
+import { useChatStore } from '@/store/chat-store'
+import { wcdAgent } from '@/data/agent-data'
 
 export function HomeView() {
   const { setView } = useNavigationStore()
+  const { setActiveCategory } = useChatStore()
+  const { setChatOpen } = useNavigationStore()
+
+  const openAgentChat = () => {
+    setActiveCategory('wcd-expert')
+    setChatOpen(true)
+  }
 
   const features = [
     {
@@ -24,21 +32,21 @@ export function HomeView() {
       title: 'Теория WCD',
       description: 'Подробное объяснение уязвимости Web Cache Deception, механизмов кэширования и причин возникновения расхождений в обработке URL.',
       action: () => setView('theory'),
-      gradient: 'from-violet-500 to-purple-500',
+      gradient: 'from-emerald-500 to-cyan-500',
     },
     {
       icon: <FlaskConical className="h-6 w-6" />,
       title: 'Интерактивная лаборатория',
       description: 'Пошаговая визуализация атаки WCD. Введите URL и наблюдайте, как Cache и Backend по-разному интерпретируют один и тот же запрос.',
       action: () => setView('lab'),
-      gradient: 'from-emerald-500 to-cyan-500',
+      gradient: 'from-amber-500 to-orange-500',
     },
     {
-      icon: <Bot className="h-6 w-6" />,
+      icon: <MessageCircle className="h-6 w-6" />,
       title: 'Ассистент',
-      description: 'Задавайте вопросы эксперту по Web Cache Deception, HTTP, CDN, прокси и веб-безопасности. Получайте развёрнутые ответы с примерами.',
-      action: () => setView('ai'),
-      gradient: 'from-amber-500 to-orange-500',
+      description: 'Задавайте вопросы эксперту по Web Cache Deception. Поддержка различных ИИ-моделей через OpenRouter с автоматическим фоллбэком.',
+      action: openAgentChat,
+      gradient: 'from-violet-500 to-purple-500',
     },
   ]
 
@@ -77,7 +85,7 @@ export function HomeView() {
             </div>
           </div>
         </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4">
           Web Cache Deception
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-2">
@@ -129,17 +137,17 @@ export function HomeView() {
         <CardContent className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-foreground mb-2">Начните обучение прямо сейчас</h3>
+              <h3 className="text-xl font-bold tracking-tight text-foreground mb-2">Начните обучение прямо сейчас</h3>
               <p className="text-sm text-muted-foreground">
-                Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент всегда готов помочь.
+                Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент {wcdAgent.name} всегда готов помочь.
               </p>
             </div>
-            <Button
+            <button
               onClick={() => setView('theory')}
-              className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white shrink-0"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-medium text-sm shrink-0 transition-colors"
             >
-              Начать с теории <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+              Начать с теории <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         </CardContent>
       </Card>

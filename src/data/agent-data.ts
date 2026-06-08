@@ -4,7 +4,7 @@ export const wcdAgent: AgentPersona = {
   slug: 'wcd-expert',
   name: 'Кэш-страж',
   role: 'Эксперт по Web Cache Deception',
-  avatar: '🛡️',
+  avatar: '/agents/wcd-expert.png',
   gradient: 'from-emerald-500 to-cyan-500',
   greeting: 'Привет! Я Кэш-страж — ваш ассистент по теме Web Cache Deception. Задайте мне любой вопрос о кэшировании, CDN, прокси, HTTP-заголовках или безопасности веб-приложений. Я помогу разобраться в тонкостях уязвимостей и методах защиты.',
   suggestions: [

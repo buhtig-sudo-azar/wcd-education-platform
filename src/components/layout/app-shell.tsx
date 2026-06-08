@@ -7,8 +7,9 @@ import { Footer } from './footer'
 import { HomeView } from '@/components/home/home-view'
 import { TheoryView } from '@/components/theory/theory-view'
 import { LabView } from '@/components/lab/lab-view'
-import { AIView } from '@/components/chat/ai-view'
 import { AboutView } from '@/components/about/about-view'
+import { FloatingDock } from './floating-dock'
+import { AgentChatPopup } from '@/components/chat/agent-chat-popup'
 
 export function AppShell() {
   const { currentView } = useNavigationStore()
@@ -21,8 +22,6 @@ export function AppShell() {
         return <TheoryView />
       case 'lab':
         return <LabView />
-      case 'ai':
-        return <AIView />
       case 'about':
         return <AboutView />
       default:
@@ -40,6 +39,8 @@ export function AppShell() {
         </main>
         <Footer />
       </div>
+      <FloatingDock />
+      <AgentChatPopup />
     </div>
   )
 }

@@ -1,147 +1,215 @@
-import { create } from 'zustand'
-import type { ChatMessage } from '@/types'
+import { create } from 'zustand';
+import type { ChatMessage } from '@/types';
+import { useModelStore } from '@/store/model-store';
 
 interface ChatState {
-  messages: ChatMessage[]
-  isStreaming: boolean
-  abortController: AbortController | null
-  addMessage: (message: ChatMessage) => void
-  appendToLastMessage: (content: string) => void
-  setStreaming: (streaming: boolean) => void
-  setAbortController: (controller: AbortController | null) => void
-  clearMessages: () => void
-  retryLastMessage: () => void
-  sendMessage: (content: string) => Promise<void>
+  messages: ChatMessage[];
+  isLoading: boolean;
+  activeCategory: string | null;
+  showSuggestions: boolean;
+  addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  appendToLastMessage: (content: string) => void;
+  setLoading: (loading: boolean) => void;
+  setActiveCategory: (slug: string | null) => void;
+  clearMessages: () => void;
+  sendMessage: (text: string, systemPrompt: string) => Promise<void>;
+  retryLastMessage: () => Promise<void>;
+  setShowSuggestions: (show: boolean) => void;
 }
 
-const DEFAULT_MODEL = 'google/gemma-4-31b-it:free'
+let currentAbortController: AbortController | null = null;
+let lastSendParams: { text: string; systemPrompt: string } | null = null;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
-  isStreaming: false,
-  abortController: null,
+  isLoading: false,
+  activeCategory: null,
+  showSuggestions: true,
 
   addMessage: (message) =>
-    set((state) => ({ messages: [...state.messages, message] })),
-
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        { ...message, id: crypto.randomUUID(), timestamp: Date.now() },
+      ],
+    })),
   appendToLastMessage: (content) =>
-    set((state) => {
-      const messages = [...state.messages]
-      const lastMessage = messages[messages.length - 1]
-      if (lastMessage && lastMessage.role === 'assistant') {
-        messages[messages.length - 1] = {
-          ...lastMessage,
-          content: lastMessage.content + content,
-        }
+    set((s) => {
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, content: last.content + content };
       }
-      return { messages }
+      return { messages };
     }),
+  setLoading: (loading) => set({ isLoading: loading }),
+  setActiveCategory: (slug) => set({ activeCategory: slug, showSuggestions: true }),
+  clearMessages: () => set({ messages: [], showSuggestions: true }),
+  setShowSuggestions: (show) => set({ showSuggestions }),
 
-  setStreaming: (streaming) => set({ isStreaming: streaming }),
-
-  setAbortController: (controller) => set({ abortController: controller }),
-
-  clearMessages: () => set({ messages: [] }),
-
-  retryLastMessage: () => {
-    const { messages } = get()
-    if (messages.length >= 2) {
-      const userMessages = messages.filter((m) => m.role === 'user')
-      const lastUserMessage = userMessages[userMessages.length - 1]
-      const newMessages = messages.slice(0, -1)
-      set({ messages: newMessages })
-      if (lastUserMessage) {
-        get().sendMessage(lastUserMessage.content)
+  retryLastMessage: async () => {
+    if (!lastSendParams) return;
+    const { text, systemPrompt } = lastSendParams;
+    set((s) => {
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last && last.role === 'assistant') {
+        messages.pop();
       }
-    }
+      return { messages };
+    });
+    await get().sendMessage(text, systemPrompt, true);
   },
 
-  sendMessage: async (content) => {
-    const { isStreaming } = get()
-    if (isStreaming) return
+  sendMessage: async (text: string, systemPrompt: string, isRetry = false) => {
+    const trimmed = text.trim();
+    if (!trimmed || get().isLoading) return;
 
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content,
-      timestamp: Date.now(),
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
     }
 
-    const assistantMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
+    const currentMessages = get().messages;
+
+    if (!isRetry) {
+      lastSendParams = { text: trimmed, systemPrompt };
     }
 
-    set((state) => ({
-      messages: [...state.messages, userMessage, assistantMessage],
-      isStreaming: true,
-    }))
+    set({ showSuggestions: false });
 
-    const abortController = new AbortController()
-    set({ abortController })
+    if (!isRetry) {
+      get().addMessage({ role: 'user', content: trimmed });
+    }
+    get().setLoading(true);
+
+    const controller = new AbortController();
+    currentAbortController = controller;
 
     try {
-      const { messages } = get()
-      const chatMessages = messages
-        .filter((m) => m.id !== assistantMessage.id)
-        .map((m) => ({ role: m.role, content: m.content }))
+      const chatMessages = [
+        ...currentMessages,
+        ...(isRetry ? [] : [{ role: 'user' as const, content: trimmed }]),
+      ].map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const { currentModel, apiToken } = useModelStore.getState();
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: chatMessages,
-          model: DEFAULT_MODEL,
+          systemPrompt,
+          model: currentModel,
+          apiToken: apiToken || undefined,
         }),
-        signal: abortController.signal,
-      })
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        if (controller.signal.aborted) return;
+        const errData = await response.json().catch(() => null);
+        const errMsg = errData?.error === 'All models unavailable'
+          ? 'Все модели заняты. Попробуйте выбрать другую модель или подождите пару минут.'
+          : `Ошибка сервера (${response.status}). Попробуйте ещё раз.`;
+        get().addMessage({ role: 'assistant', content: errMsg });
+        get().setLoading(false);
+        set({ showSuggestions: true });
+        return;
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      if (!reader) {
+        get().addMessage({ role: 'assistant', content: 'Ошибка: нет потока данных. Попробуйте ещё раз.' });
+        get().setLoading(false);
+        set({ showSuggestions: true });
+        return;
+      }
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+      get().addMessage({ role: 'assistant', content: '' });
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6)
-              if (data === '[DONE]') continue
-              try {
-                const parsed = JSON.parse(data)
-                const delta = parsed.choices?.[0]?.delta?.content
-                if (delta) {
-                  get().appendToLastMessage(delta)
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (controller.signal.aborted) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+
+          if (trimmedLine.startsWith('data: ')) {
+            const data = trimmedLine.slice(6).trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type === 'model_info') {
+                if (parsed.rateLimited && Array.isArray(parsed.rateLimited)) {
+                  for (const modelId of parsed.rateLimited) {
+                    useModelStore.getState().markModelRateLimited(modelId);
+                  }
                 }
-              } catch {
-                // skip malformed JSON
+                continue;
               }
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                fullContent += content;
+                get().appendToLastMessage(content);
+              }
+            } catch {
+              // skip malformed JSON
             }
           }
         }
       }
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        // User cancelled
-      } else {
-        get().appendToLastMessage(
-          `\n\nОшибка: ${(error as Error).message}. Попробуйте ещё раз.`
-        )
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        const remainingLine = buffer.trim();
+        if (remainingLine.startsWith('data: ')) {
+          const data = remainingLine.slice(6).trim();
+          if (data !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type !== 'model_info') {
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullContent += content;
+                  get().appendToLastMessage(content);
+                }
+              }
+            } catch {}
+          }
+        }
       }
+
+      if (!fullContent) {
+        get().appendToLastMessage('Не удалось получить ответ. Попробуйте другую модель или повторите запрос.');
+      }
+
+      set({ showSuggestions: true });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      get().addMessage({ role: 'assistant', content: 'Произошла ошибка сети. Проверьте подключение и попробуйте снова.' });
+      set({ showSuggestions: true });
     } finally {
-      set({ isStreaming: false, abortController: null })
+      if (currentAbortController === controller) {
+        currentAbortController = null;
+      }
+      get().setLoading(false);
     }
   },
-}))
+}));

@@ -37,11 +37,11 @@ export function TheoryView() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
             <Database className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Теория Web Cache Deception</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Теория Web Cache Deception</h1>
             <p className="text-sm text-muted-foreground">Изучите основы уязвимости шаг за шагом</p>
           </div>
         </div>
@@ -74,14 +74,17 @@ export function TheoryView() {
         {theorySections.map((section, index) => (
           <Card
             key={section.id}
-            className={`border transition-all duration-300 cursor-pointer ${
+            className={`border transition-all duration-300 ${
               expandedSection === section.id
                 ? 'border-emerald-500/30 shadow-lg shadow-emerald-500/5'
                 : 'border-border hover:border-emerald-500/20'
             }`}
-            onClick={() => toggleSection(section.id)}
           >
-            <CardHeader className="p-4">
+            {/* Only header is clickable with pointer cursor */}
+            <CardHeader
+              className="p-4 cursor-pointer select-none"
+              onClick={() => toggleSection(section.id)}
+            >
               <div className="flex items-center gap-3">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold shrink-0 ${
                   expandedSection === section.id
@@ -102,8 +105,9 @@ export function TheoryView() {
               </div>
             </CardHeader>
 
+            {/* Content area: NOT clickable, default cursor */}
             {expandedSection === section.id && (
-              <CardContent className="px-4 pb-4 pt-0">
+              <CardContent className="px-4 pb-4 pt-0 cursor-default">
                 <div className="border-t border-border pt-4">
                   <div className="prose prose-sm prose-invert max-w-none">
                     <MarkdownContent content={section.content} />
@@ -223,7 +227,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <div key={i} className="flex gap-2 ml-2 mb-1">
           <span className="text-emerald-400 shrink-0">•</span>
-          <span className="text-sm text-muted-foreground">{renderInline(line.trim().slice(2))}</span>
+          <span className="text-sm text-muted-foreground leading-relaxed">{renderInline(line.trim().slice(2))}</span>
         </div>
       )
       continue
