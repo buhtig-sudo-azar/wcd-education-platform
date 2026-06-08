@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigationStore } from '@/store/navigation-store';
@@ -69,7 +69,7 @@ export function FloatingDock() {
     if (!main) return;
 
     const start = main.scrollTop;
-    const duration = 800; // ms
+    const duration = 800;
     const startTime = performance.now();
 
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -95,7 +95,9 @@ export function FloatingDock() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-center gap-3 pointer-events-none">
+    <div className="fixed z-50 flex flex-col-reverse items-center gap-3 pointer-events-none"
+         style={{ bottom: '38px', right: '38px' }}
+    >
       {/* Агент — сверху (в flex-col-reverse рендерится первым, визуально сверху) */}
       {showAgent && (
         <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
@@ -107,18 +109,18 @@ export function FloatingDock() {
             </div>
           )}
 
-          {/* Кнопка-аватар */}
+          {/* Кнопка-аватар — полупрозрачная */}
           <button
             onClick={handleAgentClick}
             className="group relative focus:outline-none"
             aria-label={`Открыть чат с ${agent.name}`}
           >
-            <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${agent.gradient} opacity-30 animate-pulse`} />
-            <span className={`absolute -inset-1 rounded-full bg-gradient-to-br ${agent.gradient} opacity-40 group-hover:opacity-70 transition-opacity`} />
-            <span className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-background shadow-lg">
+            <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${agent.gradient} opacity-20 animate-pulse`} />
+            <span className={`absolute -inset-1 rounded-full bg-gradient-to-br ${agent.gradient} opacity-30 group-hover:opacity-60 transition-opacity`} />
+            <span className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-background/80 shadow-lg opacity-80 group-hover:opacity-100 transition-opacity">
               <Image src={agent.avatar} alt={agent.name} width={64} height={64} className="w-full h-full object-cover" />
             </span>
-            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background/80" />
           </button>
         </div>
       )}
