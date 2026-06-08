@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useNavigationStore } from '@/store/navigation-store'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -17,23 +18,25 @@ import {
   Send,
 } from 'lucide-react'
 import { wcdAgent } from '@/data/agent-data'
+import Link from 'next/link'
 
 export function HomeView() {
-  const { setView, setChatOpen } = useNavigationStore()
+  const router = useRouter()
+  const { setChatOpen } = useNavigationStore()
 
   const features = [
     {
       icon: <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />,
       title: 'Теория WCD',
       description: 'Подробное объяснение уязвимости Web Cache Deception, механизмов кэширования и причин возникновения расхождений в обработке URL.',
-      action: () => setView('theory'),
+      href: '/theory',
       gradient: 'from-emerald-500 to-cyan-500',
     },
     {
       icon: <FlaskConical className="h-5 w-5 sm:h-6 sm:w-6" />,
       title: 'Интерактивная лаборатория',
       description: 'Конфигурация прокси и backend, пошаговая симуляция атаки и интерактивная песочница с терминалом.',
-      action: () => setView('lab'),
+      href: '/lab',
       gradient: 'from-amber-500 to-orange-500',
     },
   ]
@@ -124,22 +127,22 @@ export function HomeView() {
       {/* Feature Cards */}
       <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12">
         {features.map((feature) => (
-          <Card
-            key={feature.title}
-            className="group relative overflow-hidden border-border hover:border-emerald-500/30 transition-all duration-300 cursor-pointer"
-            onClick={feature.action}
-          >
-            <CardContent className="p-4 sm:p-6">
-              <div className={`inline-flex p-2.5 sm:p-3 rounded-xl bg-gradient-to-br ${feature.gradient} text-white mb-3 sm:mb-4`}>
-                {feature.icon}
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1.5 sm:mb-2">{feature.title}</h3>
-              <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 leading-relaxed">{feature.description}</p>
-              <div className="flex items-center text-sm sm:text-base font-medium text-emerald-400 group-hover:text-emerald-300 transition-colors">
-                Перейти <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </CardContent>
-          </Card>
+          <Link key={feature.title} href={feature.href}>
+            <Card
+              className="group relative overflow-hidden border-border hover:border-emerald-500/30 transition-all duration-300 cursor-pointer"
+            >
+              <CardContent className="p-4 sm:p-6">
+                <div className={`inline-flex p-2.5 sm:p-3 rounded-xl bg-gradient-to-br ${feature.gradient} text-white mb-3 sm:mb-4`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1.5 sm:mb-2">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 leading-relaxed">{feature.description}</p>
+                <div className="flex items-center text-sm sm:text-base font-medium text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                  Перейти <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -185,7 +188,7 @@ export function HomeView() {
 
           <div className="mt-3 flex flex-wrap gap-2">
             <button
-              onClick={() => { setView('theory'); setTimeout(() => setChatOpen(true), 500) }}
+              onClick={() => { router.push('/theory'); setTimeout(() => setChatOpen(true), 500) }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white text-xs sm:text-sm font-medium transition-colors"
             >
               <MessageCircle className="h-3.5 w-3.5" />
@@ -205,12 +208,12 @@ export function HomeView() {
                 Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент {wcdAgent.name} всегда готов помочь.
               </p>
             </div>
-            <button
-              onClick={() => setView('theory')}
+            <Link
+              href="/theory"
               className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-medium text-xs sm:text-sm shrink-0 transition-colors"
             >
               Начать с теории <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </button>
+            </Link>
           </div>
         </CardContent>
       </Card>

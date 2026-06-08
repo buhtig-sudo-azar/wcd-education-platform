@@ -1,6 +1,8 @@
 'use client'
 
 import { useNavigationStore } from '@/store/navigation-store'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
   Home,
@@ -10,17 +12,22 @@ import {
   X,
   ShieldAlert,
 } from 'lucide-react'
-import type { ViewType } from '@/types'
 
-const navItems: { view: ViewType; label: string; icon: React.ReactNode }[] = [
-  { view: 'home', label: 'Главная', icon: <Home className="h-5 w-5" /> },
-  { view: 'theory', label: 'Теория', icon: <BookOpen className="h-5 w-5" /> },
-  { view: 'lab', label: 'Лаборатория', icon: <FlaskConical className="h-5 w-5" /> },
-  { view: 'about', label: 'О проекте', icon: <Info className="h-5 w-5" /> },
+const navItems: { href: string; label: string; icon: React.ReactNode }[] = [
+  { href: '/', label: 'Главная', icon: <Home className="h-5 w-5" /> },
+  { href: '/theory', label: 'Теория', icon: <BookOpen className="h-5 w-5" /> },
+  { href: '/lab', label: 'Лаборатория', icon: <FlaskConical className="h-5 w-5" /> },
+  { href: '/about', label: 'О проекте', icon: <Info className="h-5 w-5" /> },
 ]
 
 export function Sidebar() {
-  const { currentView, setView, sidebarOpen, setSidebarOpen } = useNavigationStore()
+  const { sidebarOpen, setSidebarOpen } = useNavigationStore()
+  const pathname = usePathname()
+
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname.startsWith(href)
+  }
 
   return (
     <>
@@ -60,19 +67,20 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex flex-col gap-1 p-2.5 sm:p-3">
           {navItems.map((item) => (
-            <button
-              key={item.view}
-              onClick={() => setView(item.view)}
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 'flex items-center gap-2.5 sm:gap-3 rounded-lg px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200',
-                currentView === item.view
+                isActive(item.href)
                   ? 'bg-gradient-to-r from-emerald-500/15 to-cyan-500/15 text-emerald-400 border border-emerald-500/20'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground border border-transparent'
               )}
             >
               {item.icon}
               {item.label}
-            </button>
+            </Link>
           ))}
         </nav>
 

@@ -1,12 +1,12 @@
 'use client'
 
 import { AppShell } from '@/components/layout/app-shell'
-import { HomeView } from '@/components/home/home-view'
+import { LabView } from '@/components/lab/lab-view'
 
-export default function Home() {
+export default function LabPage() {
   return (
     <AppShell>
-      <HomeView />
+      <LabView />
     </AppShell>
   )
 }
