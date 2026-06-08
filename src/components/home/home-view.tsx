@@ -99,10 +99,10 @@ export function HomeView() {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-3 sm:mb-4">
           Web Cache Deception
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-1.5 sm:mb-2">
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-1.5 sm:mb-2">
           Интерактивная образовательная платформа для изучения уязвимости Web Cache Deception
         </p>
-        <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
+        <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
           Ориентирована на начинающих специалистов по веб-безопасности и студентов PortSwigger Web Security Academy
         </p>
       </div>
@@ -115,8 +115,8 @@ export function HomeView() {
             className="flex flex-col items-center text-center p-3 sm:p-4 rounded-xl bg-card border border-border hover:border-emerald-500/30 transition-colors"
           >
             <div className="mb-2 sm:mb-3">{concept.icon}</div>
-            <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-0.5 sm:mb-1">{concept.title}</h3>
-            <p className="text-[10px] sm:text-xs text-muted-foreground leading-snug">{concept.description}</p>
+            <h3 className="text-sm sm:text-base font-semibold text-foreground mb-0.5 sm:mb-1">{concept.title}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-snug">{concept.description}</p>
           </div>
         ))}
       </div>
@@ -133,9 +133,9 @@ export function HomeView() {
               <div className={`inline-flex p-2.5 sm:p-3 rounded-xl bg-gradient-to-br ${feature.gradient} text-white mb-3 sm:mb-4`}>
                 {feature.icon}
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2">{feature.title}</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 leading-relaxed">{feature.description}</p>
-              <div className="flex items-center text-xs sm:text-sm font-medium text-emerald-400 group-hover:text-emerald-300 transition-colors">
+              <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1.5 sm:mb-2">{feature.title}</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 leading-relaxed">{feature.description}</p>
+              <div className="flex items-center text-sm sm:text-base font-medium text-emerald-400 group-hover:text-emerald-300 transition-colors">
                 Перейти <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
             </CardContent>
@@ -151,8 +151,8 @@ export function HomeView() {
               <MessageCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-foreground">Ассистент {wcdAgent.name}</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Как пользоваться ИИ-ассистентом</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-foreground">Ассистент {wcdAgent.name}</h3>
+              <p className="text-sm sm:text-base text-muted-foreground">Как пользоваться ИИ-ассистентом</p>
             </div>
           </div>
 
@@ -167,17 +167,17 @@ export function HomeView() {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-[10px] sm:text-xs font-bold text-muted-foreground/50">{i + 1}</span>
-                    <p className="text-xs sm:text-sm font-medium text-foreground">{step.title}</p>
+                    <span className="text-xs sm:text-sm font-bold text-muted-foreground/50">{i + 1}</span>
+                    <p className="text-sm sm:text-base font-medium text-foreground">{step.title}</p>
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{step.description}</p>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-            <p className="text-[10px] sm:text-xs text-amber-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-amber-300 leading-relaxed">
               Ассистент доступен на страницах «Теория» и «Лаборатория» — ищите плавающую иконку в правом нижнем углу.
               Для работы без ограничений получите API-ключ на <span className="font-medium">openrouter.ai</span> — бесплатные модели доступны без оплаты.
             </p>
@@ -200,8 +200,8 @@ export function HomeView() {
         <CardContent className="p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="flex-1 text-center sm:text-left">
-              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-1.5 sm:mb-2">Начните обучение прямо сейчас</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground mb-1.5 sm:mb-2">Начните обучение прямо сейчас</h3>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                 Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент {wcdAgent.name} всегда готов помочь.
               </p>
             </div>

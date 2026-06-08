@@ -123,15 +123,18 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-size: 18px;
-    line-height: 1.75;
+    font-size: 20px;
+    line-height: 1.85;
+    letter-spacing: 0.01em;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   /* Headings */
   h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.02em;
-    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-weight: 600;
     text-wrap: balance;
   }
   p {
@@ -203,12 +206,13 @@
 .comment-line {
   font-style: italic;
   font-family: var(--font-geist-sans), Georgia, 'Times New Roman', serif;
-  color: oklch(0.62 0.06 165);
-  opacity: 0.85;
+  color: oklch(0.58 0.04 165);
+  opacity: 0.8;
+  letter-spacing: 0.02em;
 }
 .dark .comment-line {
-  color: oklch(0.72 0.05 165);
-  opacity: 0.7;
+  color: oklch(0.68 0.04 165);
+  opacity: 0.65;
 }
 /* Code content (non-comment) — standard mono */
 .code-content {

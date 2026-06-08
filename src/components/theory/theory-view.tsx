@@ -38,14 +38,14 @@ export function TheoryView() {
             <Database className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Теория Web Cache Deception</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">Изучите основы уязвимости шаг за шагом</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Теория Web Cache Deception</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Изучите основы уязвимости шаг за шагом</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <Badge variant="secondary" className="text-[10px] sm:text-xs">7 разделов</Badge>
-          <Badge variant="secondary" className="text-[10px] sm:text-xs">Для начинающих</Badge>
-          <Badge variant="secondary" className="text-[10px] sm:text-xs">PortSwigger Academy</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">7 разделов</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">Для начинающих</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">PortSwigger Academy</Badge>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export function TheoryView() {
                   <div className="text-emerald-400 shrink-0">
                     {iconMap[section.icon]}
                   </div>
-                  <span className="text-sm sm:text-base font-semibold truncate text-foreground">{section.title}</span>
+                  <span className="text-base sm:text-lg font-semibold truncate text-foreground">{section.title}</span>
                 </div>
               </div>
             </AccordionTrigger>
@@ -92,10 +92,10 @@ export function TheoryView() {
 
       {/* Navigation hint */}
       <div className="mt-6 sm:mt-8 text-center">
-        <p className="text-xs sm:text-sm text-muted-foreground mb-1.5 sm:mb-2">
+        <p className="text-sm sm:text-base text-muted-foreground mb-1.5 sm:mb-2">
           Изучили теорию? Переходите к практике!
         </p>
-        <div className="inline-flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-medium">
+        <div className="inline-flex items-center gap-2 text-emerald-400 text-sm sm:text-base font-medium">
           Откройте раздел «Лаборатория» в боковом меню
         </div>
       </div>
@@ -125,7 +125,7 @@ function MarkdownContent({ content }: { content: string }) {
     const parts = text.split(/`([^`]+)`/g)
     return parts.map((part, i) =>
       i % 2 === 1 ? (
-        <code key={i} className="px-1 sm:px-1.5 py-0.5 rounded bg-muted text-emerald-400 text-[10px] sm:text-xs font-mono">{part}</code>
+        <code key={i} className="px-1.5 sm:px-2 py-0.5 rounded bg-muted text-emerald-400 text-xs sm:text-sm font-mono">{part}</code>
       ) : (
         part
       )
@@ -152,7 +152,7 @@ function MarkdownContent({ content }: { content: string }) {
       inTable = false
       elements.push(
         <div key={i} className="overflow-x-auto my-3 sm:my-4">
-          <table className="w-full text-[10px] sm:text-xs border-collapse">
+          <table className="w-full text-xs sm:text-sm border-collapse">
             <thead>
               <tr className="border-b border-border">
                 {tableHeaders.map((h, hi) => (
@@ -181,7 +181,7 @@ function MarkdownContent({ content }: { content: string }) {
     if (line.match(/^\*\*\d+\./)) {
       const text = line.replace(/^\*\*/, '').replace(/\*\*$/, '').replace(/\*\*/g, '')
       elements.push(
-        <h4 key={i} className="text-sm sm:text-base font-bold text-foreground mt-3 sm:mt-4 mb-1.5 sm:mb-2">
+        <h4 key={i} className="text-base sm:text-lg font-bold text-foreground mt-3 sm:mt-4 mb-1.5 sm:mb-2">
           {renderInline(text)}
         </h4>
       )
@@ -192,14 +192,14 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <div key={i} className="flex gap-1.5 sm:gap-2 ml-1 sm:ml-2 mb-0.5 sm:mb-1">
           <span className="text-emerald-400 shrink-0">•</span>
-          <span className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{renderInline(line.trim().slice(2))}</span>
+          <span className="text-sm sm:text-base text-muted-foreground leading-relaxed">{renderInline(line.trim().slice(2))}</span>
         </div>
       )
       continue
     }
 
     elements.push(
-      <p key={i} className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-1.5 sm:mb-2">
+      <p key={i} className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-2 sm:mb-3">
         {renderInline(line)}
       </p>
     )
