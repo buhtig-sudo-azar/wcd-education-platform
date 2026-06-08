@@ -59,6 +59,7 @@ export function TheoryView() {
           <Badge variant="secondary" className="text-xs sm:text-sm">Для начинающих</Badge>
           <Badge variant="secondary" className="text-xs sm:text-sm">PortSwigger Academy</Badge>
           <Badge variant="secondary" className="text-xs sm:text-sm">Серверные конфигурации</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">Fly.io и Workers</Badge>
         </div>
       </div>
 
@@ -162,7 +163,7 @@ function MarkdownContent({ content }: { content: string }) {
       inTable = false
       elements.push(
         <div key={i} className="overflow-x-auto my-3 sm:my-4 -mx-1 sm:mx-0">
-          <table className="w-full min-w-[500px] sm:min-w-0 text-xs sm:text-sm border-collapse">
+          <table className="w-full min-w-[400px] sm:min-w-0 text-xs sm:text-sm border-collapse">
             <thead>
               <tr className="border-b border-border">
                 {tableHeaders.map((h, hi) => (
@@ -218,7 +219,7 @@ function MarkdownContent({ content }: { content: string }) {
   if (inTable) {
     elements.push(
       <div key="final-table" className="overflow-x-auto my-3 sm:my-4 -mx-1 sm:mx-0">
-        <table className="w-full min-w-[500px] sm:min-w-0 text-[10px] sm:text-xs border-collapse">
+        <table className="w-full min-w-[400px] sm:min-w-0 text-[10px] sm:text-xs border-collapse">
           <thead>
             <tr className="border-b border-border">
               {tableHeaders.map((h, hi) => (

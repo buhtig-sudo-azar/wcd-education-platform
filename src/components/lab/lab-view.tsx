@@ -35,7 +35,7 @@ import {
 /* ─────────────────────── types ─────────────────────── */
 
 interface ProxyConfig {
-  type: 'cloudflare' | 'nginx' | 'varnish' | 'apache'
+  type: 'cloudflare' | 'nginx' | 'varnish' | 'apache' | 'flyio' | 'cloudflare_workers'
   cacheStaticExts: string[]
   cacheKey: 'full-url' | 'path-only' | 'normalized'
   normalizeUrl: boolean
@@ -113,6 +113,22 @@ const PROXY_CONFIGS: Record<string, ProxyConfig> = {
     normalizeUrl: false,
     respectCacheControl: true,
     defaultTtl: 3600,
+  },
+  flyio: {
+    type: 'flyio',
+    cacheStaticExts: ['css', 'js', 'png', 'jpg', 'gif', 'svg', 'ico', 'woff', 'woff2'],
+    cacheKey: 'full-url',
+    normalizeUrl: false,
+    respectCacheControl: true,
+    defaultTtl: 3600,
+  },
+  cloudflare_workers: {
+    type: 'cloudflare_workers',
+    cacheStaticExts: ['css', 'js', 'png', 'jpg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf'],
+    cacheKey: 'full-url',
+    normalizeUrl: false,
+    respectCacheControl: true,
+    defaultTtl: 1800,
   },
 }
 
@@ -495,6 +511,165 @@ RewriteEngine On
 # Nginx: нормализует URL → удаляет %0f → /home.css
 # Apache: НЕ нормализует → /account/home%0f.css → .css = кэш!
 # Apache БОЛЕЕ уязвим к WCD, чем Nginx`,
+
+  flyio: `# ═══════════════════════════════════════════════════════
+# Fly.io — Конфигурация кэширования
+# ═══════════════════════════════════════════════════════
+#
+# КТО КЭШИРУЕТ: Fly.io через встроенный обратный прокси
+#                или Varnish sidecar. Кэширует, если
+#                настроен fly-cache-url или подключён Varnish.
+#
+# ПОЧЕМУ УЯЗВИМ: Внутренний прокси Fly.io НЕ нормализует
+#                URL. Спецсимволы %0f, %00, %0a проходят
+#                как есть. Если прокси проверяет расширение
+#                URL (.css = кэшировать), атака WCD сработает.
+#
+# Что это: Fly.io — облачная платформа, которая запускает
+#          Docker-контейнеры на краевых серверах по всему
+#          миру. Приложение разворачивается близко к
+#          пользователю — это ускоряет загрузку.
+#
+# Зачем: Fly.io может кэшировать HTTP-ответы через
+#        встроенный прокси (fly-cache-url) или Varnish
+#        sidecar. Это ускоряет отдачу статического контента.
+# ═══════════════════════════════════════════════════════
+
+# ── Способ 1: fly-cache-url (встроенный прокси) ──
+# В Dockerfile приложения указываем:
+# EXPOSE 8080
+# ENV FLY_CACHE_URL=http://localhost:8080
+#
+# Fly.io создаёт кэширующий прокси перед приложением.
+# Он проверяет расширение URL и Cache-Control заголовки.
+# Проблема: НЕ нормализует URL → /home%0f.css = кэш!
+
+# ── Способ 2: Varnish sidecar ──
+# В fly.toml добавляем:
+# [services]
+#   [[services.ports]]
+#     handlers = ["http"]
+#     port = 80
+#
+# Varnish запускается как sidecar-контейнер рядом с
+# приложением. Настраивается через VCL (как обычный Varnish).
+# Уязвим точно так же: НЕ нормализует URL.
+
+# ── Правила кэширования Fly.io ──
+# Встроенный прокси кэширует по расширению URL:
+#   /style.css      → .css → кэшировать (TTL: 3600s)
+#   /app.js         → .js  → кэшировать (TTL: 3600s)
+#   /logo.png       → .png → кэшировать (TTL: 3600s)
+#   /account/home   → нет расширения → НЕ кэшировать
+#
+# ═══ ПРОБЛЕМА ═══
+# /account/home%0f.css
+#   → Прокси видит .css → кэшировать!
+#   → Приложение обрезает %0f → /account/home → профиль!
+#   → Профиль жертвы сохранён в кэше Fly.io!
+#
+# Как Fly.io сравнивается с другими платформами:
+#   Vercel:  кэширует статику автоматически, НЕ нормализует
+#   Netlify: кэширует статику автоматически, НЕ нормализует
+#   Railway: НЕТ встроенного кэша → нужен Nginx/Varnish
+#   Render:  НЕТ встроенного кэша → нужен Nginx/Varnish`,
+
+  cloudflare_workers: `# ═══════════════════════════════════════════════════════
+# worker.js — Cloudflare Workers (Edge Function)
+# ═══════════════════════════════════════════════════════
+#
+# КТО КЭШИРУЕТ: Cloudflare Workers через Cache API.
+#                Worker — это JavaScript-код, который
+#                выполняется на краевых серверах Cloudflare.
+#                Он может ПРОГРАММНО управлять кэшем.
+#
+# ПОЧЕМУ УЯЗВИМ: Worker может кэшировать ответы БЕЗ
+#                проверки Content-Type. Если Worker
+#                проверяет только расширение URL (.css),
+#                он закэширует динамический контент.
+#                Worker НЕ нормализует URL автоматически.
+#
+# Что это: Cloudflare Workers — это серверные функции,
+#          которые работают на 300+ серверах Cloudflare
+#          по всему миру. Они могут перехватывать
+#          запросы, управлять кэшем и модифицировать
+#          ответы.
+#
+# Зачем: Workers позволяют программно управлять кэшем,
+#        создавать кастомные правила кэширования и
+#        обрабатывать запросы на краевых серверах.
+# ═══════════════════════════════════════════════════════
+
+// ── УЯЗВИМЫЙ Worker ──
+// Этот Worker кэширует по расширению URL — ОПАСНО!
+addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+
+  // Кэшировать ВСЁ, что заканчивается на .css — ОПАСНО!
+  if (url.pathname.endsWith('.css')) {
+    event.respondWith(
+      caches.default.match(event.request).then(cached => {
+        if (cached) return cached
+        return fetch(event.request).then(response => {
+          // Сохраняем в кэш БЕЗ проверки Content-Type!
+          caches.default.put(event.request, response.clone())
+          return response
+        })
+      })
+    )
+  }
+})
+
+// ═══ ПРОБЛЕМА ═══
+// URL: /account/home%0f.css
+//   → Worker видит .css → проверяет кэш → MISS
+//   → Запрашивает у сервера-источника
+//   → Сервер обрезает %0f → /account/home → профиль!
+//   → Worker сохраняет профиль в кэше как "CSS-файл"
+//   → Любой, кто запросит /account/home%0f.css,
+//     получит данные жертвы из кэша!
+
+// ── БЕЗОПАСНЫЙ Worker ──
+// Проверяем Content-Type ПЕРЕД кэшированием
+addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+
+  // Нормализуем: удаляем спецсимволы из пути
+  const cleanPath = url.pathname.replace(/[\\x00-\\x1f\\x7f]/g, '')
+  if (cleanPath !== url.pathname) {
+    event.respondWith(new Response('Bad Request', { status: 400 }))
+    return
+  }
+
+  if (url.pathname.endsWith('.css')) {
+    event.respondWith(
+      caches.default.match(event.request).then(cached => {
+        if (cached) return cached
+        return fetch(event.request).then(response => {
+          // Проверяем Content-Type ПЕРЕД кэшированием!
+          const ct = response.headers.get('Content-Type') || ''
+          if (ct.includes('text/css')) {
+            caches.default.put(event.request, response.clone())
+          }
+          return response
+        })
+      })
+    )
+  }
+})
+
+// ── Cache API в Workers ──
+// caches.default     — глобальный кэш Cloudflare
+// caches.open(name)  — именованная область кэша
+//
+// Пример поиска в кэше:
+//   const cached = await caches.default.match(request)
+//
+// Пример сохранения в кэш:
+//   await caches.default.put(request, response.clone())
+//
+// Пример удаления из кэша:
+//   await caches.default.delete(request)`,
 }
 
 const BACKEND_CONFIG_FILES: Record<string, string> = {
@@ -1620,16 +1795,18 @@ export function LabView() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="config" className="space-y-4 sm:space-y-5">
-        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex h-9 sm:h-10">
-          <TabsTrigger value="config" className="text-xs sm:text-sm gap-1.5">
+        <TabsList className="w-full grid grid-cols-3 h-9 sm:h-10">
+          <TabsTrigger value="config" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
             <Settings className="h-3.5 w-3.5" />
-            <span>Конфигурация</span>
+            <span className="hidden sm:inline">Конфигурация</span>
+            <span className="sm:hidden">Конфиг</span>
           </TabsTrigger>
-          <TabsTrigger value="simulation" className="text-xs sm:text-sm gap-1.5">
+          <TabsTrigger value="simulation" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
             <Play className="h-3.5 w-3.5" />
-            <span>Симуляция</span>
+            <span className="hidden sm:inline">Симуляция</span>
+            <span className="sm:hidden">Сим</span>
           </TabsTrigger>
-          <TabsTrigger value="sandbox" className="text-xs sm:text-sm gap-1.5">
+          <TabsTrigger value="sandbox" className="text-xs sm:text-sm gap-1 sm:gap-1.5">
             <Terminal className="h-3.5 w-3.5" />
             <span>Песочница</span>
           </TabsTrigger>
@@ -1645,20 +1822,18 @@ export function LabView() {
                   <Database className="h-4 w-4 text-amber-400" />
                   <CardTitle className="text-sm sm:text-base font-semibold">Прокси-сервер (Cache)</CardTitle>
                 </div>
-                <div className="flex gap-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {(['cloudflare', 'nginx', 'varnish', 'apache'] as const).map(type => (
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    {(['cloudflare', 'nginx', 'varnish', 'apache', 'flyio', 'cloudflare_workers'] as const).map(type => (
                       <Button
                         key={type}
                         variant={proxyType === type ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setProxyType(type)}
-                        className={`text-[10px] sm:text-xs ${proxyType === type ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30' : ''}`}
+                        className={`text-[10px] sm:text-xs h-7 sm:h-8 min-w-[44px] ${proxyType === type ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30' : ''}`}
                       >
-                        {type === 'cloudflare' ? 'Cloudflare' : type === 'nginx' ? 'Nginx' : type === 'varnish' ? 'Varnish' : 'Apache'}
+                        {type === 'cloudflare' ? 'Cloudflare' : type === 'nginx' ? 'Nginx' : type === 'varnish' ? 'Varnish' : type === 'apache' ? 'Apache' : type === 'flyio' ? 'Fly.io' : 'CF Workers'}
                       </Button>
                     ))}
-                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1684,7 +1859,11 @@ export function LabView() {
                         ? 'Nginx нормализует URL перед проверкой location, но ключ кэша может использовать нормализованный путь. Однако если upstream получает оригинальный URL, расхождение всё равно возможно при определённых конфигурациях proxy_pass.'
                         : proxyConfig.type === 'apache'
                           ? 'Apache не нормализует URL агрессивно, как Nginx. Символы %0f, %00, %0a проходят через mod_rewrite без изменений. mod_cache проверяет расширение URL (.css = кэшировать) без проверки Content-Type. Если включены CacheIgnoreCacheControl или CacheStoreNoStore — Apache кэширует вообще всё.'
-                          : 'Varnish использует req.url как есть для хеширования. Если VCL-правило проверяет расширение регулярным выражением, URL с %0f.css попадёт под правило для статических файлов. Varnish не нормализует URL автоматически.'}
+                          : proxyConfig.type === 'flyio'
+                            ? 'Fly.io использует внутренний обратный прокси, который НЕ нормализует URL. Спецсимволы %0f, %00, %0a проходят через прокси как есть. Если настроен fly-cache-url или Varnish sidecar, расширение URL (.css) определяет кэширование — без проверки Content-Type и без нормализации.'
+                            : proxyConfig.type === 'cloudflare_workers'
+                              ? 'Cloudflare Workers могут программно управлять кэшем через Cache API. Если Worker кэширует по расширению URL без проверки Content-Type — он закэширует динамический контент. Workers НЕ нормализуют URL автоматически — спецсимволы %0f, %00, %0a проходят как есть.'
+                              : 'Varnish использует req.url как есть для хеширования. Если VCL-правило проверяет расширение регулярным выражением, URL с %0f.css попадёт под правило для статических файлов. Varnish не нормализует URL автоматически.'}
                   </p>
                 </div>
               </div>
@@ -1692,7 +1871,7 @@ export function LabView() {
               {/* Config file */}
               <CodeBlock
                 code={PROXY_CONFIG_FILES[proxyType]}
-                title={`Конфигурация ${proxyType === 'cloudflare' ? 'Cloudflare' : proxyType === 'nginx' ? 'Nginx' : proxyType === 'apache' ? 'Apache' : 'Varnish'}`}
+                title={`Конфигурация ${proxyType === 'cloudflare' ? 'Cloudflare' : proxyType === 'nginx' ? 'Nginx' : proxyType === 'apache' ? 'Apache' : proxyType === 'flyio' ? 'Fly.io' : proxyType === 'cloudflare_workers' ? 'CF Workers' : 'Varnish'}`}
                 icon={<FileCode className="h-3.5 w-3.5 text-amber-400" />}
               />
             </CardContent>
@@ -1706,20 +1885,18 @@ export function LabView() {
                   <Server className="h-4 w-4 text-blue-400" />
                   <CardTitle className="text-sm sm:text-base font-semibold">Сервер-источник (Backend)</CardTitle>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {(['nodejs', 'python', 'java', 'ruby', 'django', 'laravel', 'go', 'dotnet'] as const).map(type => (
                       <Button
                         key={type}
                         variant={backendType === type ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setBackendType(type)}
-                        className={`text-[10px] sm:text-xs ${backendType === type ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30' : ''}`}
+                        className={`text-[10px] sm:text-xs h-7 sm:h-8 min-w-[44px] ${backendType === type ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30' : ''}`}
                       >
                         {type === 'nodejs' ? 'Node.js' : type === 'python' ? 'Flask' : type === 'java' ? 'Spring' : type === 'ruby' ? 'Rails' : type === 'django' ? 'Django' : type === 'laravel' ? 'Laravel' : type === 'go' ? 'Go' : '.NET'}
                       </Button>
                     ))}
-                  </div>
                 </div>
               </div>
             </CardHeader>

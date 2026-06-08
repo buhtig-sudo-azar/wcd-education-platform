@@ -127,15 +127,15 @@ export function ModelSelector() {
               {isApplying ? 'Применение...' : currentLabel}
             </span>
             {!isKnownModel && currentModel && (
-              <Badge variant="secondary" className="text-[8px] sm:text-[9px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5">custom</Badge>
+              <Badge variant="secondary" className="text-[9px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5">custom</Badge>
             )}
             {apiToken && (
-              <Badge variant="outline" className="text-[8px] sm:text-[9px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5 border-green-500/50 text-green-600 hidden sm:inline-flex">
+              <Badge variant="outline" className="text-[9px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5 border-green-500/50 text-green-600 hidden sm:inline-flex">
                 <Key className="h-2 sm:h-2.5 w-2 sm:w-2.5 mr-0.5" />свой
               </Badge>
             )}
             {limitedCount > 0 && (
-              <Badge variant="destructive" className="text-[8px] sm:text-[9px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5">
+              <Badge variant="destructive" className="text-[9px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 ml-0.5">
                 {limitedCount}
               </Badge>
             )}

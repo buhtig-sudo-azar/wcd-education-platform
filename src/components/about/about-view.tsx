@@ -64,6 +64,10 @@ export function AboutView() {
               'Конфигурация Apache: mod_cache и обработка URL',
               'Cloudflare: правила кэширования и настройки безопасности',
               'Varnish: VCL и логика кэширования',
+              'Cloudflare Workers: edge-кэширование и программное управление кэшем',
+              'Fly.io и облачные платформы: кэширование без серверов',
+              'Проектирование конфигурационных файлов: принципы безопасности',
+              'Django, Laravel, Go, .NET: обработка URL в разных фреймворках',
               'Фреймворки: Express, Flask, Spring, Rails, Django, Laravel, Go, .NET',
               'Методы защиты от WCD-атак и лучшие практики',
             ].map((item) => (
@@ -131,7 +135,7 @@ export function AboutView() {
             <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
             <h2 className="text-base sm:text-lg font-semibold text-foreground">Технологический стек</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {[
               { name: 'Next.js 16', desc: 'React фреймворк' },
               { name: 'TypeScript', desc: 'Типизированный JS' },

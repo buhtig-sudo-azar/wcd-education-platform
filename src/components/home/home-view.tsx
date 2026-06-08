@@ -47,7 +47,7 @@ export function HomeView() {
     {
       icon: <Server className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />,
       title: 'Backend',
-      description: 'Сервер-источник, обрабатывающий запросы и генерирующий ответы',
+      description: 'Сервер-источник, обрабатывающий запросы. Fly.io и Workers — новые платформы',
     },
     {
       icon: <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400" />,
@@ -58,6 +58,11 @@ export function HomeView() {
       icon: <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-red-400" />,
       title: 'Data Leak',
       description: 'Утечка конфиденциальных данных через кэшированный ответ',
+    },
+    {
+      icon: <Settings className="h-6 w-6 sm:h-8 sm:w-8 text-violet-400" />,
+      title: 'Config Design',
+      description: 'Безопасное проектирование конфигураций: default-deny, path-prefix caching',
     },
   ]
 
@@ -108,7 +113,7 @@ export function HomeView() {
       </div>
 
       {/* Key Concepts */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-8 sm:mb-12">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mb-8 sm:mb-12">
         {concepts.map((concept) => (
           <div
             key={concept.title}

@@ -18,7 +18,7 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-12 sm:h-14 items-center gap-3 sm:gap-4 border-b border-border bg-background/80 backdrop-blur-md px-3 sm:px-4 lg:px-6">
       <button
         onClick={toggleSidebar}
-        className="rounded-md p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
+        className="rounded-md p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center sm:min-w-0 sm:min-h-0"
       >
         <Menu className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
       </button>
@@ -36,7 +36,7 @@ export function Header() {
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <ModelSelector />
-        <div className="hidden sm:flex h-7 sm:h-8 items-center rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 px-2.5 sm:px-3 border border-emerald-500/20">
+        <div className="hidden md:flex h-7 sm:h-8 items-center rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 px-2.5 sm:px-3 border border-emerald-500/20">
           <span className="text-[10px] sm:text-xs font-medium text-emerald-400">Web Cache Deception</span>
         </div>
       </div>

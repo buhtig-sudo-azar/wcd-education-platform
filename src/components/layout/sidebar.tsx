@@ -68,7 +68,7 @@ export function Sidebar() {
               key={item.view}
               onClick={() => handleNav(item.view)}
               className={cn(
-                'flex items-center gap-2.5 sm:gap-3 rounded-lg px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 w-full text-left',
+                'flex items-center gap-2.5 sm:gap-3 rounded-lg px-2.5 sm:px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 w-full text-left min-h-[44px]',
                 currentView === item.view
                   ? 'bg-gradient-to-r from-emerald-500/15 to-cyan-500/15 text-emerald-400 border border-emerald-500/20'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground border border-transparent'
