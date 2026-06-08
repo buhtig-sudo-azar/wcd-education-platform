@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigationStore } from '@/store/navigation-store';
@@ -10,8 +10,6 @@ import Image from 'next/image';
 
 /**
  * FloatingDock — контейнер для кнопки «Наверх» и плавающего агента.
- * Элементы обтекают друг друга: когда оба видимы, они выстраиваются
- * вертикально с зазором; когда один — он один в углу.
  */
 export function FloatingDock() {
   const currentView = useNavigationStore(s => s.currentView);
@@ -22,17 +20,26 @@ export function FloatingDock() {
   const [scrollVisible, setScrollVisible] = useState(false);
 
   // --- Agent state ---
-  const [showTooltip, setShowTooltip] = useState(false);
   const [hasAppeared, setHasAppeared] = useState(false);
 
   const agentVisible = currentView !== 'home' && !chatOpen;
   const agent = wcdAgent;
 
-  // Слушаем скролл для ScrollToTop
+  // Слушаем скролл для ScrollToTop — throttled через rAF
   useEffect(() => {
     const main = document.querySelector('main');
     if (!main) return;
-    const handleScroll = () => setScrollVisible(main.scrollTop > 300);
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setScrollVisible(main.scrollTop > 300);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
     main.addEventListener('scroll', handleScroll, { passive: true });
     return () => main.removeEventListener('scroll', handleScroll);
   }, []);
@@ -47,24 +54,13 @@ export function FloatingDock() {
     }
   }, [agentVisible]);
 
-  // Подсказка при первом появлении агента
-  useEffect(() => {
-    if (hasAppeared && !chatOpen) {
-      const timer = setTimeout(() => {
-        setShowTooltip(true);
-        setTimeout(() => setShowTooltip(false), 3000);
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [hasAppeared, chatOpen]);
-
   const showAgent = agent && hasAppeared && agentVisible;
 
   // Если ничего не видно — не рендерим контейнер
   if (!scrollVisible && !showAgent) return null;
 
   // Плавная прокрутка наверх с ease-out
-  const scrollToTop = () => {
+  const scrollToTop = useCallback(() => {
     const main = document.querySelector('main');
     if (!main) return;
 
@@ -87,40 +83,35 @@ export function FloatingDock() {
     };
 
     requestAnimationFrame(animateScroll);
-  };
+  }, []);
 
-  const handleAgentClick = () => {
+  const handleAgentClick = useCallback(() => {
     setActiveCategory('wcd-expert');
     useNavigationStore.getState().setChatOpen(true);
-  };
+  }, [setActiveCategory]);
 
   return (
     <div className="fixed z-50 flex flex-col-reverse items-center gap-3 pointer-events-none"
-         style={{ bottom: '38px', right: '38px' }}
+         style={{ bottom: '28px', right: '28px' }}
     >
-      {/* Агент — сверху (в flex-col-reverse рендерится первым, визуально сверху) */}
+      {/* Агент — визуально сверху */}
       {showAgent && (
-        <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
-          {/* Тултип — вплотную к аватару */}
-          {showTooltip && (
-            <div className="hidden sm:block mb-3 bg-popover border border-border rounded-lg px-3 py-2 shadow-lg max-w-[180px] animate-in fade-in slide-in-from-right-1 duration-150">
-              <p className="text-xs font-semibold text-foreground">{agent.name}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Нажми, чтобы спросить!</p>
-            </div>
-          )}
-
-          {/* Кнопка-аватар — полупрозрачная */}
+        <div className="pointer-events-auto animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
           <button
             onClick={handleAgentClick}
             className="group relative focus:outline-none"
             aria-label={`Открыть чат с ${agent.name}`}
           >
-            <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${agent.gradient} opacity-20 animate-pulse`} />
-            <span className={`absolute -inset-1 rounded-full bg-gradient-to-br ${agent.gradient} opacity-30 group-hover:opacity-60 transition-opacity`} />
-            <span className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-background/80 shadow-lg opacity-80 group-hover:opacity-100 transition-opacity">
-              <Image src={agent.avatar} alt={agent.name} width={64} height={64} className="w-full h-full object-cover" />
+            {/* Пульсирующее свечение */}
+            <span className={`absolute -inset-2 rounded-full bg-gradient-to-br ${agent.gradient} opacity-25 group-hover:opacity-50 transition-opacity duration-300 blur-sm`} />
+            {/* Кольцо вокруг аватара */}
+            <span className="absolute -inset-1 rounded-full border-2 border-emerald-400/40 group-hover:border-emerald-400/70 transition-colors duration-300" />
+            {/* Аватар */}
+            <span className="relative flex items-center justify-center w-14 h-14 sm:w-[68px] sm:h-[68px] rounded-full overflow-hidden border-2 border-background shadow-xl group-hover:shadow-2xl transition-shadow duration-300">
+              <Image src={agent.avatar} alt={agent.name} width={68} height={68} className="w-full h-full object-cover" />
             </span>
-            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background/80" />
+            {/* Зелёный индикатор онлайн */}
+            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background shadow-sm" />
           </button>
         </div>
       )}
