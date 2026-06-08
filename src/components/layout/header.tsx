@@ -7,7 +7,7 @@ const viewTitles: Record<string, string> = {
   home: 'Главная',
   theory: 'Теория',
   lab: 'Лаборатория',
-  ai: 'AI Ассистент',
+  ai: 'Ассистент',
   about: 'О проекте',
 }
 

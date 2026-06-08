@@ -34,14 +34,14 @@ export function AboutView() {
             Интерактивная образовательная платформа, созданная для изучения уязвимости Web Cache Deception (WCD).
             Проект ориентирован на начинающих специалистов по веб-безопасности и студентов PortSwigger Web Security Academy.
             Платформа позволяет изучить теоретические основы уязвимости, визуально наблюдать механизм атаки в интерактивной
-            лаборатории и получать помощь от AI-ассистента.
+            лаборатории и получать помощь от встроенного ассистента.
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="text-xs">Next.js</Badge>
             <Badge variant="secondary" className="text-xs">TypeScript</Badge>
             <Badge variant="secondary" className="text-xs">Tailwind CSS</Badge>
             <Badge variant="secondary" className="text-xs">shadcn/ui</Badge>
-            <Badge variant="secondary" className="text-xs">OpenRouter AI</Badge>
+            <Badge variant="secondary" className="text-xs">OpenRouter</Badge>
           </div>
         </CardContent>
       </Card>
@@ -135,7 +135,7 @@ export function AboutView() {
               { name: 'Tailwind CSS 4', desc: 'Утилитарный CSS' },
               { name: 'shadcn/ui', desc: 'UI компоненты' },
               { name: 'Zustand', desc: 'Управление состоянием' },
-              { name: 'OpenRouter', desc: 'AI API провайдер' },
+              { name: 'OpenRouter', desc: 'API провайдер' },
             ].map((tech) => (
               <div key={tech.name} className="p-3 rounded-lg border border-border text-center">
                 <p className="text-sm font-medium text-foreground">{tech.name}</p>

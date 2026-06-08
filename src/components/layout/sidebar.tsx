@@ -17,7 +17,7 @@ const navItems: { view: ViewType; label: string; icon: React.ReactNode }[] = [
   { view: 'home', label: 'Главная', icon: <Home className="h-5 w-5" /> },
   { view: 'theory', label: 'Теория', icon: <BookOpen className="h-5 w-5" /> },
   { view: 'lab', label: 'Лаборатория', icon: <FlaskConical className="h-5 w-5" /> },
-  { view: 'ai', label: 'AI Ассистент', icon: <Bot className="h-5 w-5" /> },
+  { view: 'ai', label: 'Ассистент', icon: <Bot className="h-5 w-5" /> },
   { view: 'about', label: 'О проекте', icon: <Info className="h-5 w-5" /> },
 ]
 

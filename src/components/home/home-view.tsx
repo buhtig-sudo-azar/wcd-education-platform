@@ -35,7 +35,7 @@ export function HomeView() {
     },
     {
       icon: <Bot className="h-6 w-6" />,
-      title: 'AI Ассистент',
+      title: 'Ассистент',
       description: 'Задавайте вопросы эксперту по Web Cache Deception, HTTP, CDN, прокси и веб-безопасности. Получайте развёрнутые ответы с примерами.',
       action: () => setView('ai'),
       gradient: 'from-amber-500 to-orange-500',
@@ -131,7 +131,7 @@ export function HomeView() {
             <div className="flex-1">
               <h3 className="text-xl font-bold text-foreground mb-2">Начните обучение прямо сейчас</h3>
               <p className="text-sm text-muted-foreground">
-                Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — AI-ассистент всегда готов помочь.
+                Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент всегда готов помочь.
               </p>
             </div>
             <Button
