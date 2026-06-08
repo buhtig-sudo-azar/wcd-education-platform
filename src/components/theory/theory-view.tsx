@@ -1,9 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import { theorySections } from '@/data/theory'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import {
   Database,
   Zap,
@@ -12,7 +16,6 @@ import {
   Split,
   GitBranch,
   AlertTriangle,
-  ChevronRight,
 } from 'lucide-react'
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -26,12 +29,6 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export function TheoryView() {
-  const [expandedSection, setExpandedSection] = useState<string | null>('what-is-cache')
-
-  const toggleSection = (id: string) => {
-    setExpandedSection(expandedSection === id ? null : id)
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
       {/* Header */}
@@ -52,72 +49,46 @@ export function TheoryView() {
         </div>
       </div>
 
-      {/* Progress indicator */}
-      <div className="flex items-center gap-1 mb-6 sm:mb-8">
+      {/* Sections — using Radix Accordion for proper trigger/content isolation */}
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue="what-is-cache"
+        className="space-y-2.5 sm:space-y-3"
+      >
         {theorySections.map((section, index) => (
-          <div
+          <AccordionItem
             key={section.id}
-            className={`h-1 sm:h-1.5 flex-1 rounded-full transition-colors cursor-pointer ${
-              expandedSection === section.id
-                ? 'bg-emerald-500'
-                : index < theorySections.findIndex((s) => s.id === expandedSection)
-                ? 'bg-emerald-500/50'
-                : 'bg-muted'
-            }`}
-            onClick={() => toggleSection(section.id)}
-          />
-        ))}
-      </div>
-
-      {/* Sections */}
-      <div className="space-y-2.5 sm:space-y-3">
-        {theorySections.map((section, index) => (
-          <Card
-            key={section.id}
-            className={`border transition-all duration-300 ${
-              expandedSection === section.id
-                ? 'border-emerald-500/30 shadow-lg shadow-emerald-500/5'
-                : 'border-border hover:border-emerald-500/20'
-            }`}
+            value={section.id}
+            className="border rounded-xl px-3 sm:px-4 transition-all duration-300 data-[state=open]:border-emerald-500/30 data-[state=open]:shadow-lg data-[state=open]:shadow-emerald-500/5 data-[state=closed]:border-border data-[state=closed]:hover:border-emerald-500/20"
           >
-            {/* Only header is clickable with pointer cursor */}
-            <CardHeader
-              className="p-3 sm:p-4 cursor-pointer select-none"
-              onClick={() => toggleSection(section.id)}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
+            {/* TRIGGER — only this area is clickable, cursor-pointer is native */}
+            <AccordionTrigger className="py-3 sm:py-4 hover:no-underline">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                 <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-xs sm:text-sm font-bold shrink-0 ${
-                  expandedSection === section.id
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-muted text-muted-foreground'
+                  /* We can't easily detect open state here for styling, so use group */
+                  ''
                 }`}>
                   {index + 1}
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <div className="text-emerald-400 shrink-0">
                     {iconMap[section.icon]}
                   </div>
-                  <CardTitle className="text-sm sm:text-base font-semibold truncate">{section.title}</CardTitle>
+                  <span className="text-sm sm:text-base font-semibold truncate text-foreground">{section.title}</span>
                 </div>
-                <ChevronRight className={`h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0 transition-transform duration-300 ${
-                  expandedSection === section.id ? 'rotate-90' : ''
-                }`} />
               </div>
-            </CardHeader>
+            </AccordionTrigger>
 
-            {/* Content area: NOT clickable, default cursor */}
-            {expandedSection === section.id && (
-              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 cursor-default">
-                <div className="border-t border-border pt-3 sm:pt-4">
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <MarkdownContent content={section.content} />
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
+            {/* CONTENT — NOT clickable, default cursor, fully isolated from trigger */}
+            <AccordionContent className="cursor-default">
+              <div className="border-t border-border pt-3 sm:pt-4 pb-1">
+                <MarkdownContent content={section.content} />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         ))}
-      </div>
+      </Accordion>
 
       {/* Navigation hint */}
       <div className="mt-6 sm:mt-8 text-center">
@@ -196,7 +167,7 @@ function MarkdownContent({ content }: { content: string }) {
                     <td key={ci} className="px-2 sm:px-3 py-1.5 sm:py-2 text-muted-foreground">{renderInline(cell)}</td>
                   ))}
                 </tr>
-              ))}
+            ))}
             </tbody>
           </table>
         </div>
