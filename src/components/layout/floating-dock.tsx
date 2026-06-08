@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePathname } from 'next/navigation';
 import { useNavigationStore } from '@/store/navigation-store';
 import { useChatStore } from '@/store/chat-store';
 import { wcdAgent } from '@/data/agent-data';
@@ -11,10 +10,10 @@ import Image from 'next/image';
 
 /**
  * FloatingDock — контейнер для кнопки «Наверх» и плавающего агента.
- * Агент появляется только на страницах /theory и /lab.
+ * Агент появляется только на страницах theory и lab.
  */
 export function FloatingDock() {
-  const pathname = usePathname();
+  const currentView = useNavigationStore(s => s.currentView);
   const chatOpen = useNavigationStore(s => s.chatOpen);
   const { setActiveCategory } = useChatStore();
 
@@ -25,7 +24,7 @@ export function FloatingDock() {
   const [hasAppeared, setHasAppeared] = useState(false);
 
   // Agent visible on theory and lab pages only, and when chat is closed
-  const agentVisible = (pathname === '/theory' || pathname === '/lab') && !chatOpen;
+  const agentVisible = (currentView === 'theory' || currentView === 'lab') && !chatOpen;
   const agent = wcdAgent;
 
   // Слушаем скролл для ScrollToTop — throttled через rAF

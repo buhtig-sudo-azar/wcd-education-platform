@@ -1,20 +1,18 @@
 'use client'
 
 import { useNavigationStore } from '@/store/navigation-store'
-import { usePathname } from 'next/navigation'
 import { Menu, ShieldAlert } from 'lucide-react'
 import { ModelSelector } from '@/components/settings/model-selector'
 
 const viewTitles: Record<string, string> = {
-  '/': 'Главная',
-  '/theory': 'Теория',
-  '/lab': 'Лаборатория',
-  '/about': 'О проекте',
+  home: 'Главная',
+  theory: 'Теория',
+  lab: 'Лаборатория',
+  about: 'О проекте',
 }
 
 export function Header() {
-  const { toggleSidebar } = useNavigationStore()
-  const pathname = usePathname()
+  const { toggleSidebar, currentView } = useNavigationStore()
 
   return (
     <header className="sticky top-0 z-30 flex h-12 sm:h-14 items-center gap-3 sm:gap-4 border-b border-border bg-background/80 backdrop-blur-md px-3 sm:px-4 lg:px-6">
@@ -32,7 +30,7 @@ export function Header() {
 
       <div className="hidden lg:block">
         <h2 className="text-sm font-semibold text-foreground">
-          {viewTitles[pathname] || 'Главная'}
+          {viewTitles[currentView] || 'Главная'}
         </h2>
       </div>
 

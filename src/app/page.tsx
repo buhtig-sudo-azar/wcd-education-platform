@@ -1,12 +1,7 @@
 'use client'
 
 import { AppShell } from '@/components/layout/app-shell'
-import { HomeView } from '@/components/home/home-view'
 
 export default function Home() {
-  return (
-    <AppShell>
-      <HomeView />
-    </AppShell>
-  )
+  return <AppShell />
 }

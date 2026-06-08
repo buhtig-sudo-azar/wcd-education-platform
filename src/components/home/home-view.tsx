@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useNavigationStore } from '@/store/navigation-store'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -18,25 +17,23 @@ import {
   Send,
 } from 'lucide-react'
 import { wcdAgent } from '@/data/agent-data'
-import Link from 'next/link'
 
 export function HomeView() {
-  const router = useRouter()
-  const { setChatOpen } = useNavigationStore()
+  const { navigateTo, setChatOpen } = useNavigationStore()
 
   const features = [
     {
       icon: <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />,
       title: 'Теория WCD',
       description: 'Подробное объяснение уязвимости Web Cache Deception, механизмов кэширования и причин возникновения расхождений в обработке URL.',
-      href: '/theory',
+      view: 'theory' as const,
       gradient: 'from-emerald-500 to-cyan-500',
     },
     {
       icon: <FlaskConical className="h-5 w-5 sm:h-6 sm:w-6" />,
       title: 'Интерактивная лаборатория',
       description: 'Конфигурация прокси и backend, пошаговая симуляция атаки и интерактивная песочница с терминалом.',
-      href: '/lab',
+      view: 'lab' as const,
       gradient: 'from-amber-500 to-orange-500',
     },
   ]
@@ -127,10 +124,12 @@ export function HomeView() {
       {/* Feature Cards */}
       <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12">
         {features.map((feature) => (
-          <Link key={feature.title} href={feature.href}>
-            <Card
-              className="group relative overflow-hidden border-border hover:border-emerald-500/30 transition-all duration-300 cursor-pointer"
-            >
+          <button
+            key={feature.title}
+            onClick={() => navigateTo(feature.view)}
+            className="text-left w-full"
+          >
+            <Card className="group relative overflow-hidden border-border hover:border-emerald-500/30 transition-all duration-300 cursor-pointer">
               <CardContent className="p-4 sm:p-6">
                 <div className={`inline-flex p-2.5 sm:p-3 rounded-xl bg-gradient-to-br ${feature.gradient} text-white mb-3 sm:mb-4`}>
                   {feature.icon}
@@ -142,7 +141,7 @@ export function HomeView() {
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          </button>
         ))}
       </div>
 
@@ -188,7 +187,7 @@ export function HomeView() {
 
           <div className="mt-3 flex flex-wrap gap-2">
             <button
-              onClick={() => { router.push('/theory'); setTimeout(() => setChatOpen(true), 500) }}
+              onClick={() => { navigateTo('theory'); setTimeout(() => setChatOpen(true), 500) }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white text-xs sm:text-sm font-medium transition-colors"
             >
               <MessageCircle className="h-3.5 w-3.5" />
@@ -208,12 +207,12 @@ export function HomeView() {
                 Изучите теорию Web Cache Deception, затем перейдите к интерактивной лаборатории, чтобы увидеть уязвимость в действии. Если возникнут вопросы — ассистент {wcdAgent.name} всегда готов помочь.
               </p>
             </div>
-            <Link
-              href="/theory"
+            <button
+              onClick={() => navigateTo('theory')}
               className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-medium text-xs sm:text-sm shrink-0 transition-colors"
             >
               Начать с теории <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </Link>
+            </button>
           </div>
         </CardContent>
       </Card>
