@@ -1,28 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowUp, Shield } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigationStore } from '@/store/navigation-store';
 import { useChatStore } from '@/store/chat-store';
 import { wcdAgent } from '@/data/agent-data';
 import Image from 'next/image';
 
+/**
+ * FloatingDock — контейнер для кнопки «Наверх» и плавающего агента.
+ * Элементы обтекают друг друга: когда оба видимы, они выстраиваются
+ * вертикально с зазором; когда один — он один в углу.
+ */
 export function FloatingDock() {
   const currentView = useNavigationStore(s => s.currentView);
   const chatOpen = useNavigationStore(s => s.chatOpen);
   const { setActiveCategory } = useChatStore();
 
-  // ScrollToTop state
+  // --- ScrollToTop state ---
   const [scrollVisible, setScrollVisible] = useState(false);
 
-  // Agent state
+  // --- Agent state ---
+  const [showTooltip, setShowTooltip] = useState(false);
   const [hasAppeared, setHasAppeared] = useState(false);
 
   const agentVisible = currentView !== 'home' && !chatOpen;
   const agent = wcdAgent;
 
-  // Listen for scroll
+  // Слушаем скролл для ScrollToTop
   useEffect(() => {
     const main = document.querySelector('main');
     if (!main) return;
@@ -31,7 +37,7 @@ export function FloatingDock() {
     return () => main.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Agent appear with delay
+  // Появление агента с короткой задержкой
   useEffect(() => {
     if (agentVisible) {
       const timer = setTimeout(() => setHasAppeared(true), 300);
@@ -41,13 +47,46 @@ export function FloatingDock() {
     }
   }, [agentVisible]);
 
+  // Подсказка при первом появлении агента
+  useEffect(() => {
+    if (hasAppeared && !chatOpen) {
+      const timer = setTimeout(() => {
+        setShowTooltip(true);
+        setTimeout(() => setShowTooltip(false), 3000);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [hasAppeared, chatOpen]);
+
   const showAgent = agent && hasAppeared && agentVisible;
 
+  // Если ничего не видно — не рендерим контейнер
   if (!scrollVisible && !showAgent) return null;
 
+  // Плавная прокрутка наверх с ease-out
   const scrollToTop = () => {
     const main = document.querySelector('main');
-    if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!main) return;
+
+    const start = main.scrollTop;
+    const duration = 800; // ms
+    const startTime = performance.now();
+
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const animateScroll = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutCubic(progress);
+
+      main.scrollTo(0, start * (1 - eased));
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
   };
 
   const handleAgentClick = () => {
@@ -56,74 +95,53 @@ export function FloatingDock() {
   };
 
   return (
-    <div
-      className="fixed z-50 flex flex-col items-center gap-2.5 pointer-events-none"
-      style={{
-        right: 'clamp(12px, 2.5vw, 32px)',
-        bottom: 'clamp(16px, 3vh, 32px)',
-      }}
-    >
-      {/* ScrollToTop button — ABOVE the agent */}
-      {scrollVisible && (
-        <button
-          onClick={scrollToTop}
-          aria-label="Наверх"
-          className="pointer-events-auto group flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full 
-                     bg-white/60 dark:bg-white/10 backdrop-blur-xl 
-                     border border-white/30 dark:border-white/10
-                     shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]
-                     hover:bg-white/80 dark:hover:bg-white/20
-                     hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.5)]
-                     hover:scale-110 active:scale-95 
-                     transition-all duration-300 ease-out
-                     focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-1
-                     animate-in fade-in zoom-in-95 duration-200"
-        >
-          <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors duration-300" />
-        </button>
-      )}
-
-      {/* Agent button — BELOW the scroll button */}
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-center gap-3 pointer-events-none">
+      {/* Агент — сверху (в flex-col-reverse рендерится первым, визуально сверху) */}
       {showAgent && (
-        <button
-          onClick={handleAgentClick}
-          className="pointer-events-auto group relative focus:outline-none animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-500"
-          aria-label={`Открыть чат с ${agent.name}`}
-        >
-          {/* Rotating glow ring */}
-          <span className="absolute -inset-2 rounded-full animate-[spin_10s_linear_infinite]">
-            <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-400/0 via-cyan-400/20 to-emerald-400/0" />
-          </span>
+        <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
+          {/* Тултип — вплотную к аватару */}
+          {showTooltip && (
+            <div className="hidden sm:block mb-3 bg-popover border border-border rounded-lg px-3 py-2 shadow-lg max-w-[180px] animate-in fade-in slide-in-from-right-1 duration-150">
+              <p className="text-xs font-semibold text-foreground">{agent.name}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Нажми, чтобы спросить!</p>
+            </div>
+          )}
 
-          {/* Pulsing glow */}
-          <span className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-emerald-400/15 via-cyan-400/15 to-teal-400/15 animate-pulse opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-
-          {/* Main avatar — frosted glass */}
-          <span className="relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden 
-                           bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl
-                           border border-white/40 dark:border-white/15
-                           shadow-[0_0_16px_rgba(16,185,129,0.12),0_2px_10px_rgba(0,0,0,0.08)]
-                           group-hover:shadow-[0_0_24px_rgba(16,185,129,0.25),0_4px_16px_rgba(0,0,0,0.12)]
-                           group-hover:scale-105 active:scale-95
-                           transition-all duration-300 ease-out">
-            <Image src={agent.avatar} alt={agent.name} width={64} height={64} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover opacity-85 group-hover:opacity-100 transition-opacity" />
-
-            {/* Glass overlay */}
-            <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/10 via-transparent to-transparent" />
-          </span>
-
-          {/* Online indicator */}
-          <span className="absolute bottom-0 right-0 flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4">
-            <span className="absolute w-full h-full rounded-full bg-emerald-400/40 animate-ping" />
-            <span className="relative w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-white/70 dark:border-slate-800/70" />
-          </span>
-
-          {/* Shield badge */}
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-sm">
-            <Shield className="w-2.5 h-2.5 text-white" />
-          </span>
-        </button>
+          {/* Кнопка-аватар */}
+          <button
+            onClick={handleAgentClick}
+            className="group relative focus:outline-none"
+            aria-label={`Открыть чат с ${agent.name}`}
+          >
+            <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${agent.gradient} opacity-30 animate-pulse`} />
+            <span className={`absolute -inset-1 rounded-full bg-gradient-to-br ${agent.gradient} opacity-40 group-hover:opacity-70 transition-opacity`} />
+            <span className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-background shadow-lg">
+              <Image src={agent.avatar} alt={agent.name} width={64} height={64} className="w-full h-full object-cover" />
+            </span>
+            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+          </button>
+        </div>
       )}
+
+      {/* ScrollToTop — всегда в самом низу */}
+      <button
+        onClick={scrollToTop}
+        aria-label="Наверх"
+        className={cn(
+          'pointer-events-auto flex items-center justify-center',
+          'h-11 w-11 rounded-full',
+          'bg-primary text-primary-foreground shadow-lg',
+          'hover:shadow-xl hover:scale-110',
+          'active:scale-95',
+          'transition-all duration-300 ease-in-out',
+          'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background',
+          scrollVisible
+            ? 'translate-y-0 opacity-100'
+            : 'translate-y-4 opacity-0 pointer-events-none h-0 w-0 overflow-hidden'
+        )}
+      >
+        <ArrowUp className="h-5 w-5" />
+      </button>
     </div>
   );
 }
