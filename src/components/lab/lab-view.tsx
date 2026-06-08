@@ -8,17 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   FlaskConical,
-  Send,
   RotateCcw,
   Database,
   Server,
   AlertTriangle,
   CheckCircle2,
   ArrowDown,
-  ArrowRight,
   Globe,
-  Lock,
-  Unlock,
   Copy,
   Settings,
   Terminal,
@@ -28,7 +24,6 @@ import {
   Eye,
   Zap,
   XCircle,
-  ChevronDown,
   User,
   LayoutGrid,
   Filter,
@@ -1387,7 +1382,7 @@ function parseUrlWithConfigs(
   // Check for double-encoded delimiters if no single-encoded delimiter found
   let isDoubleEncoded = false
   if (!activeDelimiter) {
-    for (const [doubleEncoded, singleEncoded] of Object.entries(doubleEncodedMap)) {
+    for (const [doubleEncoded] of Object.entries(doubleEncodedMap)) {
       if (original.toLowerCase().includes(doubleEncoded.toLowerCase())) {
         activeDelimiter = doubleEncoded
         isDoubleEncoded = true
@@ -1865,7 +1860,7 @@ export function LabView() {
 
     let totalDelay = 0
     steps.forEach(({ step, lines }) => {
-      lines.forEach((line, i) => {
+      lines.forEach((line) => {
         totalDelay += 300
         setTimeout(() => {
           addTerminalLine(line)

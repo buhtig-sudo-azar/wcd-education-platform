@@ -86,6 +86,8 @@ function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number):
   });
 }
 
+const JSON_HEADERS = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' };
+
 export async function POST(req: NextRequest) {
   try {
     const { messages, systemPrompt, model: clientModel, apiToken, max_tokens: clientMaxTokens, temperature: clientTemperature } = await req.json();
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'API key not configured' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
       });
     }
 
@@ -154,7 +156,7 @@ export async function POST(req: NextRequest) {
           if (!originalStream) {
             return new Response(JSON.stringify({ error: 'No stream body' }), {
               status: 500,
-              headers: { 'Content-Type': 'application/json' },
+              headers: JSON_HEADERS,
             });
           }
 
@@ -178,7 +180,7 @@ export async function POST(req: NextRequest) {
           return new Response(combinedStream, {
             headers: {
               'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
               Connection: 'keep-alive',
               'X-Model-Used': model,
               'X-Rate-Limited-Models': rateLimitedModels.join(','),
@@ -212,13 +214,13 @@ export async function POST(req: NextRequest) {
       rateLimitedModels,
     }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 }

@@ -12,7 +12,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 
 export function AgentChatPopup() {
-  const { messages, isLoading, clearMessages, sendMessage, showSuggestions, setShowSuggestions, retryLastMessage } = useChatStore();
+  const { messages, isLoading, clearMessages, sendMessage, showSuggestions, retryLastMessage } = useChatStore();
   const { chatOpen, setChatOpen } = useNavigationStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isMinimized, setIsMinimized] = useState(false);

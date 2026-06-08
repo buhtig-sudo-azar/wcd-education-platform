@@ -3,13 +3,14 @@ import { NextResponse } from 'next/server';
 let cachedModels: { id: string; name: string; label: string }[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, no-cache, must-revalidate' };
 
 export async function GET() {
   try {
     const now = Date.now();
 
     if (cachedModels && now - cacheTime < CACHE_TTL) {
-      return NextResponse.json({ models: cachedModels });
+      return NextResponse.json({ models: cachedModels }, { headers: NO_STORE_HEADERS });
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -29,11 +30,11 @@ export async function GET() {
 
     if (!response.ok) {
       if (cachedModels) {
-        return NextResponse.json({ models: cachedModels });
+        return NextResponse.json({ models: cachedModels }, { headers: NO_STORE_HEADERS });
       }
       return NextResponse.json(
         { error: 'Failed to fetch models from OpenRouter' },
-        { status: response.status }
+        { status: response.status, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -53,12 +54,12 @@ export async function GET() {
     cachedModels = freeModels;
     cacheTime = now;
 
-    return NextResponse.json({ models: freeModels });
+    return NextResponse.json({ models: freeModels }, { headers: NO_STORE_HEADERS });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     if (cachedModels) {
-      return NextResponse.json({ models: cachedModels });
+      return NextResponse.json({ models: cachedModels }, { headers: NO_STORE_HEADERS });
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

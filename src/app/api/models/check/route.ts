@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, no-cache, must-revalidate' };
+
 export async function POST(req: NextRequest) {
   try {
     const { model, apiToken } = await req.json();
 
     if (!model || typeof model !== 'string') {
-      return NextResponse.json({ error: 'Model is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Model is required' }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const apiKey = apiToken || process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'API key not configured' }, { status: 500, headers: NO_STORE_HEADERS });
     }
 
     const startTime = Date.now();
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
           remaining: rateLimitRemaining ? parseInt(rateLimitRemaining, 10) : null,
           reset: rateLimitReset || null,
         },
-      });
+      }, { headers: NO_STORE_HEADERS });
     }
 
     if (response.status === 429) {
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
           remaining: 0,
           reset: rateLimitReset || null,
         },
-      });
+      }, { headers: NO_STORE_HEADERS });
     }
 
     const errText = await response.text().catch(() => '');
@@ -69,9 +71,9 @@ export async function POST(req: NextRequest) {
       model,
       reason: response.status === 404 ? 'not_found' : 'error',
       details: errText,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

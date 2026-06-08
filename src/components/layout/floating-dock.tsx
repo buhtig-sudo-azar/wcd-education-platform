@@ -54,9 +54,10 @@ export function FloatingDock() {
     if (agentVisible) {
       const timer = setTimeout(() => setHasAppeared(true), 300);
       return () => clearTimeout(timer);
-    } else {
-      setHasAppeared(false);
     }
+    // Сбрасываем через таймер, чтобы избежать синхронного setState в effect
+    const timer = setTimeout(() => setHasAppeared(false), 0);
+    return () => clearTimeout(timer);
   }, [agentVisible]);
 
   // Плавная прокрутка наверх с ease-out
