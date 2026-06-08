@@ -63,7 +63,7 @@ export function AgentChatPopup() {
     <>
       {/* Minimized version — small avatar */}
       {isMinimized && (
-        <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-50 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed bottom-20 sm:bottom-24 md:bottom-6 right-4 sm:right-6 z-[60] animate-in fade-in zoom-in-95 duration-200">
           <button
             onClick={handleRestore}
             className="group relative focus:outline-none"
@@ -92,21 +92,61 @@ export function AgentChatPopup() {
       {!isMinimized && (
         <div
           className={`
-            fixed z-50 flex flex-col
-            bg-background border border-border shadow-2xl rounded-2xl overflow-hidden
+            fixed z-[60] flex flex-col
+            bg-background border border-border shadow-2xl overflow-hidden
             transition-all duration-300 ease-in-out
-            ${isExpanded
-              ? 'bottom-4 right-4 top-16 sm:top-[72px] w-[calc(100vw-2rem)] max-w-[700px] max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-88px)]'
-              : 'bottom-20 sm:bottom-24 right-2 sm:right-4 w-[calc(100vw-1rem)] max-w-[340px] md:max-w-[380px] top-16 sm:top-[72px] max-h-[calc(100vh-7rem)] sm:max-h-[560px]'
+            ${
+              isExpanded
+                ? /* Expanded mode */
+                  'top-[48px] sm:top-[56px] bottom-0 inset-x-0 md:bottom-4 md:right-4 md:left-auto md:w-[calc(100vw-2rem)] md:max-w-[700px] md:max-h-[calc(100vh-72px)] md:rounded-2xl rounded-none'
+                : /* Normal mode */
+                  'top-[48px] sm:top-[56px] bottom-0 inset-x-0 md:bottom-24 md:right-4 md:left-auto md:w-[380px] md:max-h-[560px] md:rounded-2xl rounded-none'
             }
             animate-in slide-in-from-bottom-4 fade-in duration-200
           `}
         >
-          {/* Chat header with agent avatar */}
-          <div className="relative flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
+          {/* ── Compact header for mobile/tablet ── */}
+          <div className="md:hidden relative flex items-center gap-2 px-3 py-2 border-b border-border bg-background/95 backdrop-blur-sm">
             <div className={`absolute inset-0 bg-gradient-to-r ${agent.gradient} opacity-[0.08]`} />
-            <div className="relative flex items-center gap-2.5 sm:gap-3 w-full">
-              <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white/20 shadow-sm flex-shrink-0">
+            <div className="relative flex items-center gap-2 w-full">
+              <div className="relative w-7 h-7 rounded-full overflow-hidden border border-white/20 shadow-sm flex-shrink-0">
+                <Image
+                  src={agent.avatar}
+                  alt={agent.name}
+                  width={28}
+                  height={28}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-foreground truncate leading-tight">{agent.name}</h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-muted flex-shrink-0"
+                onClick={handleExpand}
+                aria-label={isExpanded ? 'Свернуть окно' : 'Развернуть окно'}
+              >
+                {isExpanded ? <Shrink className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-muted flex-shrink-0"
+                onClick={handleClose}
+                aria-label="Закрыть чат"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Full header for desktop ── */}
+          <div className="hidden md:flex relative items-center gap-2.5 px-4 py-3 border-b border-border">
+            <div className={`absolute inset-0 bg-gradient-to-r ${agent.gradient} opacity-[0.08]`} />
+            <div className="relative flex items-center gap-2.5 w-full">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 shadow-sm flex-shrink-0">
                 <Image
                   src={agent.avatar}
                   alt={agent.name}
@@ -116,49 +156,49 @@ export function AgentChatPopup() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{agent.name}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">{agent.role}</p>
+                <h3 className="text-sm font-bold text-foreground truncate">{agent.name}</h3>
+                <p className="text-xs text-muted-foreground truncate">{agent.role}</p>
               </div>
               <div className="flex items-center gap-0.5 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 sm:h-7 sm:w-7 hover:bg-muted"
+                  className="h-7 w-7 hover:bg-muted"
                   onClick={handleExpand}
                   aria-label={isExpanded ? 'Свернуть окно' : 'Развернуть окно'}
                 >
-                  {isExpanded ? <Shrink className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Maximize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+                  {isExpanded ? <Shrink className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 sm:h-7 sm:w-7 hover:bg-muted"
+                  className="h-7 w-7 hover:bg-muted"
                   onClick={handleMinimize}
                   aria-label="Свернуть в аватар"
                 >
-                  <Minimize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <Minimize2 className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 sm:h-7 sm:w-7 hover:bg-muted"
+                  className="h-7 w-7 hover:bg-muted"
                   onClick={handleClose}
                   aria-label="Закрыть чат"
                 >
-                  <X className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Messages area */}
+          {/* ── Messages area ── */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-2.5 sm:p-3 min-h-0"
           >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-4 sm:py-6 px-3 sm:px-4 text-center">
-                <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-primary/20 shadow-md mb-2.5 sm:mb-3">
+                <div className="relative w-10 h-10 sm:w-14 md:w-16 md:h-16 sm:h-14 rounded-full overflow-hidden border-2 border-primary/20 shadow-md mb-2 sm:mb-3">
                   <Image
                     src={agent.avatar}
                     alt={agent.name}
