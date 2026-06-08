@@ -116,19 +116,40 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
-    font-size: 18px;
+    font-size: clamp(15px, 1.125vw + 8px, 18px);
     line-height: 1.75;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    font-variant-ligatures: common-ligatures contextual;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
+    font-weight: 700;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background-color: oklch(0.6 0.18 165 / 30%);
+  }
+  .dark ::selection {
+    background-color: oklch(0.6 0.18 165 / 40%);
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — Webkit */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -143,6 +164,12 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   opacity: 0.5;
+}
+
+/* Custom scrollbar — Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 
 /* Chat message animation */
@@ -173,4 +200,14 @@
 }
 .animate-pulse-ring {
   animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Responsive font scale */
+@media (max-width: 640px) {
+  body {
+    line-height: 1.65;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.015em;
+  }
 }

@@ -68,14 +68,14 @@ export function FloatingDock() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-center gap-3 pointer-events-none">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-center gap-2.5 sm:gap-3 pointer-events-none">
       {/* Agent button */}
       {showAgent && (
         <div className="pointer-events-auto flex items-end gap-1.5 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300">
           {showTooltip && (
-            <div className="hidden sm:block mb-3 bg-popover border border-border rounded-lg px-3 py-2 shadow-lg max-w-[180px] animate-in fade-in slide-in-from-right-1 duration-150">
-              <p className="text-xs font-semibold text-foreground">{agent.name}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Нажми, чтобы спросить!</p>
+            <div className="hidden sm:block mb-2.5 bg-popover border border-border rounded-lg px-2.5 py-1.5 shadow-lg max-w-[160px] animate-in fade-in slide-in-from-right-1 duration-150">
+              <p className="text-[11px] font-semibold text-foreground">{agent.name}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Нажми, чтобы спросить!</p>
             </div>
           )}
 
@@ -86,10 +86,10 @@ export function FloatingDock() {
           >
             <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${agent.gradient} opacity-30 animate-pulse`} />
             <span className={`absolute -inset-1 rounded-full bg-gradient-to-br ${agent.gradient} opacity-40 group-hover:opacity-70 transition-opacity`} />
-            <span className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-background shadow-lg">
+            <span className="relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-background shadow-lg">
               <Image src={agent.avatar} alt={agent.name} width={64} height={64} className="w-full h-full object-cover" />
             </span>
-            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+            <span className="absolute bottom-0 right-0 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-background" />
           </button>
         </div>
       )}
@@ -100,7 +100,7 @@ export function FloatingDock() {
         aria-label="Наверх"
         className={cn(
           'pointer-events-auto flex items-center justify-center',
-          'h-11 w-11 rounded-full',
+          'h-9 w-9 sm:h-11 sm:w-11 rounded-full',
           'bg-primary text-primary-foreground shadow-lg',
           'hover:shadow-xl hover:scale-110',
           'active:scale-95',
@@ -111,7 +111,7 @@ export function FloatingDock() {
             : 'translate-y-4 opacity-0 pointer-events-none h-0 w-0 overflow-hidden'
         )}
       >
-        <ArrowUp className="h-5 w-5" />
+        <ArrowUp className="h-4 w-4 sm:h-5 sm:w-5" />
       </button>
     </div>
   );

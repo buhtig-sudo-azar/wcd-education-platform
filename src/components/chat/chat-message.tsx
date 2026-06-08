@@ -12,11 +12,11 @@ export function ChatMessage({ message }: { message: ChatMessageType }) {
   return (
     <div className={cn('flex gap-2 animate-message-in', isUser && 'flex-row-reverse')}>
       <div className={cn(
-        'shrink-0 w-7 h-7 rounded-full flex items-center justify-center overflow-hidden',
+        'shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center overflow-hidden',
         isUser ? 'bg-primary text-primary-foreground' : 'border border-border'
       )}>
         {isUser ? (
-          <User className="h-3.5 w-3.5" />
+          <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
         ) : (
           <Image
             src={wcdAgent.avatar}
@@ -28,7 +28,7 @@ export function ChatMessage({ message }: { message: ChatMessageType }) {
         )}
       </div>
       <div className={cn(
-        'flex-1 min-w-0 rounded-lg px-4 py-2.5 text-base',
+        'flex-1 min-w-0 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm',
         isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
       )}>
         <div className="whitespace-pre-wrap break-words leading-relaxed">

@@ -47,11 +47,11 @@ interface ParsedResult {
 }
 
 const labSteps: LabStep[] = [
-  { id: 1, title: 'Ввод URL', description: 'Пользователь вводит URL для анализа', icon: <Globe className="h-5 w-5" /> },
-  { id: 2, title: 'Разбор Cache', description: 'Кэш-сервер анализирует URL', icon: <Database className="h-5 w-5" /> },
-  { id: 3, title: 'Разбор Backend', description: 'Сервер-источник анализирует URL', icon: <Server className="h-5 w-5" /> },
-  { id: 4, title: 'Кэширование', description: 'Кэш сохраняет ответ как статический ресурс', icon: <Copy className="h-5 w-5" /> },
-  { id: 5, title: 'Утечка данных', description: 'Атакующий получает конфиденциальные данные', icon: <AlertTriangle className="h-5 w-5" /> },
+  { id: 1, title: 'Ввод URL', description: 'Пользователь вводит URL для анализа', icon: <Globe className="h-4 w-4 sm:h-5 sm:w-5" /> },
+  { id: 2, title: 'Разбор Cache', description: 'Кэш-сервер анализирует URL', icon: <Database className="h-4 w-4 sm:h-5 sm:w-5" /> },
+  { id: 3, title: 'Разбор Backend', description: 'Сервер-источник анализирует URL', icon: <Server className="h-4 w-4 sm:h-5 sm:w-5" /> },
+  { id: 4, title: 'Кэширование', description: 'Кэш сохраняет ответ как статический ресурс', icon: <Copy className="h-4 w-4 sm:h-5 sm:w-5" /> },
+  { id: 5, title: 'Утечка данных', description: 'Атакующий получает конфиденциальные данные', icon: <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" /> },
 ]
 
 const exampleUrls = [
@@ -64,20 +64,12 @@ const exampleUrls = [
 
 function parseUrl(url: string): ParsedResult {
   const original = url.trim()
-
-  // Decode for analysis
   const decoded = decodeURIComponent(original)
-
-  // Cache interpretation - looks at the raw URL
   const rawExtension = original.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/)?.[1] || ''
   const rawPath = original
-
-  // Backend interpretation - decodes and strips special chars
   let backendPath = decoded
 
-  // Check for delimiter characters
   const delimiters = ['%0f', '%0a', '%00', '%0d', ';']
-
   let activeDelimiter: string | null = null
   for (const delim of delimiters) {
     if (original.toLowerCase().includes(delim.toLowerCase())) {
@@ -86,7 +78,6 @@ function parseUrl(url: string): ParsedResult {
     }
   }
 
-  // Also check decoded form
   if (!activeDelimiter) {
     if (decoded.includes('\x0f')) activeDelimiter = '%0f'
     else if (decoded.includes('\n')) activeDelimiter = '%0a'
@@ -96,23 +87,15 @@ function parseUrl(url: string): ParsedResult {
   }
 
   if (activeDelimiter) {
-    if (activeDelimiter === ';') {
-      backendPath = decoded.split(';')[0]
-    } else if (activeDelimiter === '%0f') {
-      backendPath = decoded.split('\x0f')[0]
-    } else if (activeDelimiter === '%0a') {
-      backendPath = decoded.split('\n')[0]
-    } else if (activeDelimiter === '%0d') {
-      backendPath = decoded.split('\r')[0]
-    } else if (activeDelimiter === '%00') {
-      backendPath = decoded.split('\0')[0]
-    }
+    if (activeDelimiter === ';') backendPath = decoded.split(';')[0]
+    else if (activeDelimiter === '%0f') backendPath = decoded.split('\x0f')[0]
+    else if (activeDelimiter === '%0a') backendPath = decoded.split('\n')[0]
+    else if (activeDelimiter === '%0d') backendPath = decoded.split('\r')[0]
+    else if (activeDelimiter === '%00') backendPath = decoded.split('\0')[0]
   }
 
   const isVulnerable = rawExtension !== '' && backendPath !== rawPath && !original.includes('?')
-  const vulnerabilityType = isVulnerable
-    ? `Delimiter Discrepancy (${activeDelimiter})`
-    : null
+  const vulnerabilityType = isVulnerable ? `Delimiter Discrepancy (${activeDelimiter})` : null
 
   return {
     original,
@@ -149,7 +132,6 @@ export function LabView() {
     setIsAnimating(true)
     setAnimationPhase(0)
 
-    // Step-by-step animation
     const timeouts: NodeJS.Timeout[] = []
     for (let i = 1; i <= 5; i++) {
       timeouts.push(
@@ -176,24 +158,24 @@ export function LabView() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
-          <FlaskConical className="h-5 w-5" />
+      <div className="flex items-center gap-2.5 sm:gap-3 mb-5 sm:mb-6">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
+          <FlaskConical className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Лаборатория WCD</h1>
-          <p className="text-sm text-muted-foreground">Интерактивная демонстрация механизма атаки</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Лаборатория WCD</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Интерактивная демонстрация механизма атаки</p>
         </div>
       </div>
 
       {/* URL Input */}
-      <Card className="mb-6 border-emerald-500/20">
-        <CardContent className="p-4">
+      <Card className="mb-5 sm:mb-6 border-emerald-500/20">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 block">
                 Введите URL для анализа
               </label>
               <div className="flex gap-2">
@@ -201,38 +183,39 @@ export function LabView() {
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   placeholder="/account/home%0f.css"
-                  className="font-mono text-sm"
+                  className="font-mono text-xs sm:text-sm"
                   onKeyDown={(e) => e.key === 'Enter' && runSimulation()}
                 />
                 <Button
                   onClick={runSimulation}
                   disabled={isAnimating}
-                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white shrink-0"
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white shrink-0 text-xs sm:text-sm"
                 >
-                  <Send className="h-4 w-4 mr-2" />
-                  Анализ
+                  <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Анализ</span>
+                  <span className="xs:hidden">Анализ</span>
                 </Button>
                 <Button variant="outline" onClick={reset} className="shrink-0">
-                  <RotateCcw className="h-4 w-4" />
+                  <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Example URLs */}
-          <div className="mt-3">
-            <p className="text-xs text-muted-foreground mb-2">Примеры URL:</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-2.5 sm:mt-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">Примеры URL:</p>
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {exampleUrls.map((ex) => (
                 <button
                   key={ex.url}
                   onClick={() => setUrlInput(ex.url)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-mono border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors"
                 >
                   {ex.vulnerable ? (
-                    <AlertTriangle className="h-3 w-3 text-red-400" />
+                    <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-400" />
                   ) : (
-                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-400" />
                   )}
                   <span className="text-muted-foreground">{ex.label}</span>
                 </button>
@@ -244,11 +227,11 @@ export function LabView() {
 
       {/* Steps Progress */}
       {currentStep > 0 && (
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-5 sm:mb-6 overflow-x-auto pb-2">
           {labSteps.map((step) => (
             <div
               key={step.id}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border shrink-0 transition-all duration-500 ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border shrink-0 transition-all duration-500 ${
                 currentStep >= step.id
                   ? step.id === 5 && result?.isVulnerable
                     ? 'border-red-500/30 bg-red-500/10'
@@ -266,7 +249,7 @@ export function LabView() {
                 {step.icon}
               </div>
               <div className="min-w-0">
-                <p className={`text-xs font-medium ${
+                <p className={`text-[10px] sm:text-xs font-medium ${
                   currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'
                 }`}>
                   {step.title}
@@ -279,21 +262,21 @@ export function LabView() {
 
       {/* Visualization */}
       {result && currentStep > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Step 1: Original Request */}
           {currentStep >= 1 && (
             <Card className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <CardHeader className="p-4 pb-2">
+              <CardHeader className="p-3 sm:p-4 pb-2">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-cyan-400" />
-                  <CardTitle className="text-sm font-semibold">Исходный запрос</CardTitle>
+                  <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-cyan-400" />
+                  <CardTitle className="text-xs sm:text-sm font-semibold">Исходный запрос</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted font-mono text-sm">
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-muted font-mono text-xs sm:text-sm">
                   <span className="text-cyan-400">GET</span>
                   <span className="text-foreground">{result.original}</span>
-                  <span className="text-muted-foreground">HTTP/1.1</span>
+                  <span className="text-muted-foreground hidden sm:inline">HTTP/1.1</span>
                 </div>
               </CardContent>
             </Card>
@@ -301,41 +284,41 @@ export function LabView() {
 
           {/* Steps 2 & 3: Cache and Backend interpretation */}
           {currentStep >= 2 && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Cache */}
               <Card className={`animate-in fade-in slide-in-from-left-2 duration-500 ${
                 result.isVulnerable ? 'border-amber-500/30' : 'border-emerald-500/30'
               }`}>
-                <CardHeader className="p-4 pb-2">
+                <CardHeader className="p-3 sm:p-4 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Database className="h-4 w-4 text-amber-400" />
-                      <CardTitle className="text-sm font-semibold">Cache (Кэш-сервер)</CardTitle>
+                      <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+                      <CardTitle className="text-xs sm:text-sm font-semibold">Cache (Кэш-сервер)</CardTitle>
                     </div>
-                    <Badge variant="secondary" className={`text-xs ${
+                    <Badge variant="secondary" className={`text-[10px] sm:text-xs ${
                       result.cache.isStatic ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
                     }`}>
                       {result.cache.isStatic ? 'Статический' : 'Динамический'}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 space-y-3">
+                <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Путь URL:</p>
-                    <code className="px-2 py-1 rounded bg-muted text-xs font-mono text-amber-400">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Путь URL:</p>
+                    <code className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-muted text-[10px] sm:text-xs font-mono text-amber-400 break-all">
                       {result.cache.path}
                     </code>
                   </div>
                   {result.cache.extension && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Расширение:</p>
-                      <code className="px-2 py-1 rounded bg-muted text-xs font-mono text-amber-400">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Расширение:</p>
+                      <code className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-muted text-[10px] sm:text-xs font-mono text-amber-400">
                         .{result.cache.extension}
                       </code>
                     </div>
                   )}
-                  <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                    <p className="text-xs text-amber-300">
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <p className="text-[10px] sm:text-xs text-amber-300">
                       {result.cache.interpretation}
                     </p>
                   </div>
@@ -346,26 +329,26 @@ export function LabView() {
               <Card className={`animate-in fade-in slide-in-from-right-2 duration-500 ${
                 result.isVulnerable ? 'border-red-500/30' : 'border-emerald-500/30'
               }`}>
-                <CardHeader className="p-4 pb-2">
+                <CardHeader className="p-3 sm:p-4 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Server className="h-4 w-4 text-red-400" />
-                      <CardTitle className="text-sm font-semibold">Backend (Сервер-источник)</CardTitle>
+                      <Server className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+                      <CardTitle className="text-xs sm:text-sm font-semibold">Backend (Сервер-источник)</CardTitle>
                     </div>
-                    <Badge variant="secondary" className="text-xs bg-red-500/10 text-red-400">
+                    <Badge variant="secondary" className="text-[10px] sm:text-xs bg-red-500/10 text-red-400">
                       Динамический
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 space-y-3">
+                <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Путь URL:</p>
-                    <code className="px-2 py-1 rounded bg-muted text-xs font-mono text-red-400">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Путь URL:</p>
+                    <code className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-muted text-[10px] sm:text-xs font-mono text-red-400 break-all">
                       {result.backend.path}
                     </code>
                   </div>
-                  <div className="p-2 rounded-lg bg-red-500/5 border border-red-500/20">
-                    <p className="text-xs text-red-300">
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-red-500/5 border border-red-500/20">
+                    <p className="text-[10px] sm:text-xs text-red-300">
                       {result.backend.interpretation}
                     </p>
                   </div>
@@ -377,12 +360,12 @@ export function LabView() {
           {/* Discrepancy indicator */}
           {currentStep >= 3 && result.isVulnerable && (
             <Card className="border-red-500/30 bg-red-500/5 animate-in fade-in duration-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-6 w-6 text-red-400 shrink-0" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start gap-2.5 sm:gap-3">
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-red-400">Обнаружено расхождение!</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm font-semibold text-red-400">Обнаружено расхождение!</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                       Cache видит <code className="text-amber-400">.{result.cache.extension}</code> файл (кэширует), а Backend видит
                       <code className="text-red-400"> {result.backend.path}</code> (возвращает данные пользователя).
                       Тип: {result.vulnerabilityType}
@@ -396,37 +379,37 @@ export function LabView() {
           {/* Step 4: Caching */}
           {currentStep >= 4 && result.isVulnerable && (
             <Card className="border-amber-500/30 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <CardHeader className="p-4 pb-2">
+              <CardHeader className="p-3 sm:p-4 pb-2">
                 <div className="flex items-center gap-2">
-                  <Copy className="h-4 w-4 text-amber-400" />
-                  <CardTitle className="text-sm font-semibold">Процесс кэширования</CardTitle>
+                  <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+                  <CardTitle className="text-xs sm:text-sm font-semibold">Процесс кэширования</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 shrink-0">
-                      <Lock className="h-4 w-4 text-red-400" />
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-muted">
+                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-red-500/20 shrink-0">
+                      <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">Сервер возвращает защищённые данные пользователя</p>
-                      <code className="text-xs text-red-400">{"{ username: 'victim@email.com', api_key: 'sk_...', ... }"}</code>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Сервер возвращает защищённые данные пользователя</p>
+                      <code className="text-[10px] sm:text-xs text-red-400 break-all">{"{ username: 'victim@email.com', api_key: 'sk_...', ... }"}</code>
                     </div>
                   </div>
 
                   <div className="flex justify-center">
-                    <ArrowDown className="h-5 w-5 text-amber-400" />
+                    <ArrowDown className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 shrink-0">
-                      <Database className="h-4 w-4 text-amber-400" />
+                  <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-amber-500/20 shrink-0">
+                      <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-amber-300 font-medium">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs text-amber-300 font-medium">
                         Кэш сохраняет ответ как статический файл .{result.cache.extension}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         Cache-Control: public, max-age=3600 — ответ будет выдан любому пользователю
                       </p>
                     </div>
@@ -439,35 +422,35 @@ export function LabView() {
           {/* Step 5: Data Leak */}
           {currentStep >= 5 && result.isVulnerable && (
             <Card className="border-red-500/30 bg-gradient-to-br from-red-500/5 to-orange-500/5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <CardHeader className="p-4 pb-2">
+              <CardHeader className="p-3 sm:p-4 pb-2">
                 <div className="flex items-center gap-2">
-                  <Unlock className="h-4 w-4 text-red-400" />
-                  <CardTitle className="text-sm font-semibold text-red-400">Утечка данных!</CardTitle>
+                  <Unlock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+                  <CardTitle className="text-xs sm:text-sm font-semibold text-red-400">Утечка данных!</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 shrink-0">
-                      <span className="text-sm">🏴‍☠️</span>
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-emerald-500/20 shrink-0">
+                      <span className="text-xs sm:text-sm">🏴‍☠️</span>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">Атакующий запрашивает:</p>
-                      <code className="text-xs text-red-400">{result.original}</code>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Атакующий запрашивает:</p>
+                      <code className="text-[10px] sm:text-xs text-red-400 break-all">{result.original}</code>
                     </div>
                   </div>
 
                   <div className="flex justify-center">
-                    <ArrowDown className="h-5 w-5 text-red-400" />
+                    <ArrowDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 shrink-0">
-                      <AlertTriangle className="h-4 w-4 text-red-400" />
+                  <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-red-500/20 shrink-0">
+                      <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-red-400">Кэш возвращает данные жертвы без аутентификации!</p>
-                      <code className="text-xs text-red-300 mt-1 block">{"{ username: 'victim@email.com', api_key: 'sk_...', balance: '$1,250' }"}</code>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs font-medium text-red-400">Кэш возвращает данные жертвы без аутентификации!</p>
+                      <code className="text-[10px] sm:text-xs text-red-300 mt-1 block break-all">{"{ username: 'victim@email.com', api_key: 'sk_...', balance: '$1,250' }"}</code>
                     </div>
                   </div>
                 </div>
@@ -478,12 +461,12 @@ export function LabView() {
           {/* Safe result */}
           {currentStep >= 3 && !result.isVulnerable && (
             <Card className="border-emerald-500/30 bg-emerald-500/5 animate-in fade-in duration-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start gap-2.5 sm:gap-3">
+                  <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-emerald-400">Уязвимость не обнаружена</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm font-semibold text-emerald-400">Уязвимость не обнаружена</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                       Cache и Backend интерпретируют этот URL одинаково. Попробуйте добавить расширение файла с разделителем, например:
                       <code className="text-amber-400 ml-1">/account/home%0f.css</code>
                     </p>
@@ -498,16 +481,16 @@ export function LabView() {
       {/* Instructions */}
       {!result && (
         <Card className="border-border">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="text-center">
-              <FlaskConical className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Как пользоваться лабораторией</h3>
-              <div className="text-sm text-muted-foreground space-y-2 max-w-lg mx-auto text-left">
+              <FlaskConical className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2">Как пользоваться лабораторией</h3>
+              <div className="text-xs sm:text-sm text-muted-foreground space-y-1.5 sm:space-y-2 max-w-lg mx-auto text-left">
                 <p>1. Введите URL в поле выше или выберите один из примеров</p>
                 <p>2. Нажмите кнопку «Анализ» для запуска симуляции</p>
                 <p>3. Наблюдайте пошаговую обработку URL компонентами Cache и Backend</p>
                 <p>4. Обратите внимание на расхождения в интерпретации URL</p>
-                <p className="pt-2 text-emerald-400 font-medium">
+                <p className="pt-1.5 sm:pt-2 text-emerald-400 font-medium">
                   Попробуйте: /account/home%0f.css — этот URL вызывает расхождение между Cache и Backend
                 </p>
               </div>
