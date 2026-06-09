@@ -22,6 +22,7 @@ import {
   Code,
   Layers,
   Shield,
+  FileSearch,
 } from 'lucide-react'
 import { useCallback } from 'react'
 
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Code: <Code className="h-4 w-4 sm:h-5 sm:w-5" />,
   Layers: <Layers className="h-4 w-4 sm:h-5 sm:w-5" />,
   Shield: <Shield className="h-4 w-4 sm:h-5 sm:w-5" />,
+  FileSearch: <FileSearch className="h-4 w-4 sm:h-5 sm:w-5" />,
 }
 
 export function TheoryView() {
