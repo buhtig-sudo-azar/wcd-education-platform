@@ -175,6 +175,18 @@ html, body, main {
   scrollbar-color: var(--muted-foreground) transparent;
 }
 
+/* Scroll offset for sticky header — prevents content from hiding under header */
+[data-accordion-item],
+[data-state="open"] {
+  scroll-margin-top: 68px; /* 56px header + 12px padding */
+}
+
+/* Smooth scroll-then-settle animation for accordion sections */
+@keyframes accordion-settle {
+  0% { opacity: 0.95; }
+  100% { opacity: 1; }
+}
+
 /* Chat message animation */
 @keyframes message-in {
   from { opacity: 0; transform: translateY(8px); }

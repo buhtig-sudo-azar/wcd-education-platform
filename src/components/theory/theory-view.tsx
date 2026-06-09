@@ -24,7 +24,7 @@ import {
   Shield,
   FileSearch,
 } from 'lucide-react'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 
 const iconMap: Record<string, React.ReactNode> = {
   Database: <Database className="h-4 w-4 sm:h-5 sm:w-5" />,
@@ -43,18 +43,59 @@ const iconMap: Record<string, React.ReactNode> = {
   FileSearch: <FileSearch className="h-4 w-4 sm:h-5 sm:w-5" />,
 }
 
+// ─── Плавная прокрутка с easing (ease-in-out-cubic) ──────────────────
+function smoothScrollTo(container: HTMLElement, targetY: number, duration: number) {
+  const startY = container.scrollTop
+  const distance = targetY - startY
+  if (Math.abs(distance) < 2) return // уже на месте
+
+  const startTime = performance.now()
+
+  function step(now: number) {
+    const elapsed = now - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    // ease-in-out cubic — плавное начало и конец
+    const eased = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2
+
+    container.scrollTop = startY + distance * eased
+
+    if (progress < 1) {
+      requestAnimationFrame(step)
+    }
+  }
+
+  requestAnimationFrame(step)
+}
+
 export function TheoryView() {
-  // Автопрокрутка к открытой секции аккордеона
+  const scrollContainerRef = useRef<HTMLElement | null>(null)
+
+  // Плавная прокрутка с easing к открытой секции аккордеона
   const handleAccordionChange = useCallback((value: string) => {
     if (!value) return
     // Небольшая задержка, чтобы контент успел развернуться
     setTimeout(() => {
       const el = document.querySelector(`[data-state="open"][data-accordion-item]`)
         ?? document.querySelector(`[data-state="open"]`)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 150)
+      if (!el) return
+
+      // Находим scroll-контейнер (main)
+      const container = scrollContainerRef.current
+        ?? document.querySelector('main')
+      if (!container) return
+
+      const headerHeight = 56 // sm:h-14 = 56px, совпадает с хедером
+      const extraPadding = 12 // дополнительный отступ для красоты
+      const targetTop = el.getBoundingClientRect().top
+        - container.getBoundingClientRect().top
+        + container.scrollTop
+        - headerHeight
+        - extraPadding
+
+      smoothScrollTo(container, targetTop, 600)
+    }, 180)
   }, [])
 
   return (
