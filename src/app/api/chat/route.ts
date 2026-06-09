@@ -5,26 +5,7 @@ let lastFetchTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 const MODEL_TIMEOUT_MS = 8000;
 
-const SYSTEM_PROMPT = `Ты — Кэш-страж, эксперт-ассистент по теме Web Cache Deception (WCD) и связанным технологиям веб-безопасности. Твоя задача — помогать пользователям разобраться в теме WCD, отвечая на вопросы понятно и подробно.
-
-Твоя специализация:
-- Web Cache Deception: механизмы, векторы атак, методы защиты
-- HTTP-протокол: заголовки, методы, статус-коды
-- Кэширование: CDN, Reverse Proxy, Browser Cache, Cache-Control
-- CDN: Cloudflare, Akamai, AWS CloudFront, принципы работы
-- Proxy и Reverse Proxy: Nginx, Varnish, HAProxy
-- Web Security: OWASP, уязвимости, методы защиты
-- Burp Suite: использование для тестирования WCD
-- PortSwigger Web Security Academy: лаборатории и учебные материалы
-
-Правила:
-1. Отвечай на русском языке
-2. Давай развёрнутые ответы с примерами
-3. Используй техническую терминологию, но объясняй её
-4. Приводи примеры URL и заголовков HTTP
-5. Если вопрос не связан с твоей специализацией, вежливо скажи об этом
-6. Рекомендуй практические упражнения и лаборатории PortSwigger
-7. Формат ответа — обычный текст. НЕ используй markdown-разметку. Никаких звёздочек (**), решёток (#), бэктиков (\`\`\`), тире для списков (-), вертикальных черт (|). Пиши обычными предложениями и абзацами. Для перечислений используй слова «во-первых», «во-вторых» или нумерацию с точкой (1., 2.). Для примеров URL просто пиши текстом.`;
+const DEFAULT_SYSTEM_PROMPT = 'Ты — ассистент образовательного приложения по Web Cache Deception. Отвечай на русском языке.';
 
 async function getFreeModels(): Promise<string[]> {
   const now = Date.now();
@@ -105,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const allMessages = [
-      { role: 'system', content: systemPrompt || SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
       ...messages,
     ];
 

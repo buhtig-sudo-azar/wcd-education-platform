@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-
-type ViewType = 'home' | 'theory' | 'lab' | 'about';
+import type { ViewType } from '@/types';
 
 interface NavigationState {
   currentView: ViewType;

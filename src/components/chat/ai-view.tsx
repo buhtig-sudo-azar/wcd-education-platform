@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useChatStore } from '@/store/chat-store'
-import { wcdAgent, chatSystemPrompt } from '@/data/agent-data'
+import { useNavigationStore } from '@/store/navigation-store'
+import { getAgentForView, getSystemPromptForView } from '@/data/agent-data'
+import type { ViewType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -21,6 +23,9 @@ export function AIView() {
     clearMessages,
     retryLastMessage,
   } = useChatStore()
+  const { currentView } = useNavigationStore()
+  const agent = getAgentForView(currentView as ViewType)
+  const systemPrompt = getSystemPromptForView(currentView as ViewType)
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -32,7 +37,7 @@ export function AIView() {
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return
-    sendMessage(input.trim(), chatSystemPrompt)
+    sendMessage(input.trim(), systemPrompt)
     setInput('')
   }
 
@@ -50,12 +55,12 @@ export function AIView() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${wcdAgent.gradient} text-white text-lg`}>
-            {wcdAgent.avatar}
+          <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${agent.gradient} text-white text-lg`}>
+            {agent.avatar}
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">{wcdAgent.name}</h2>
-            <p className="text-xs text-muted-foreground">{wcdAgent.role}</p>
+            <h2 className="text-sm font-semibold text-foreground">{agent.name}</h2>
+            <p className="text-xs text-muted-foreground">{agent.role}</p>
           </div>
         </div>
         <div className="flex gap-1">
@@ -72,16 +77,16 @@ export function AIView() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {visibleMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${wcdAgent.gradient} text-white text-2xl mb-4`}>
-              {wcdAgent.avatar}
+            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${agent.gradient} text-white text-2xl mb-4`}>
+              {agent.avatar}
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">{wcdAgent.name}</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">{wcdAgent.greeting}</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{agent.name}</h3>
+            <p className="text-sm text-muted-foreground max-w-md mb-6">{agent.greeting}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-              {wcdAgent.suggestions.map((suggestion) => (
+              {agent.suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
-                  onClick={() => sendMessage(suggestion, chatSystemPrompt)}
+                  onClick={() => sendMessage(suggestion, systemPrompt)}
                   className="text-left px-3 py-2 rounded-lg border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors text-xs text-muted-foreground hover:text-foreground"
                 >
                   {suggestion}
@@ -96,8 +101,8 @@ export function AIView() {
               className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {message.role === 'assistant' && (
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${wcdAgent.gradient} text-white text-sm shrink-0`}>
-                  {wcdAgent.avatar}
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${agent.gradient} text-white text-sm shrink-0`}>
+                  {agent.avatar}
                 </div>
               )}
               <div
@@ -135,7 +140,7 @@ export function AIView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Задайте вопрос о Web Cache Deception..."
+            placeholder={`Задайте вопрос ${agent.name}...`}
             className="min-h-[44px] max-h-32 resize-none text-sm"
             rows={1}
             disabled={isLoading}

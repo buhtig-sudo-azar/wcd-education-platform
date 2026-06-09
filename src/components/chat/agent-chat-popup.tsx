@@ -2,8 +2,8 @@
 
 import { useChatStore } from '@/store/chat-store';
 import { useNavigationStore } from '@/store/navigation-store';
-import { chatSystemPrompt } from '@/data/agent-data';
-import { wcdAgent } from '@/data/agent-data';
+import { getAgentForView, getSystemPromptForView } from '@/data/agent-data';
+import type { ViewType } from '@/types';
 import { ChatMessage } from './chat-message';
 import { ChatInput } from './chat-input';
 import { X, Minimize2, Maximize2, Shrink, Sparkles, RefreshCw } from 'lucide-react';
@@ -13,13 +13,22 @@ import Image from 'next/image';
 
 export function AgentChatPopup() {
   const { messages, isLoading, clearMessages, sendMessage, showSuggestions, retryLastMessage } = useChatStore();
-  const { chatOpen, setChatOpen } = useNavigationStore();
+  const { chatOpen, setChatOpen, currentView } = useNavigationStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const agent = wcdAgent;
-  const systemPrompt = chatSystemPrompt;
+  const agent = getAgentForView(currentView as ViewType);
+  const systemPrompt = getSystemPromptForView(currentView as ViewType);
+
+  // Track previous view to clear chat when user switches sections
+  const [prevView, setPrevView] = useState(currentView);
+  useEffect(() => {
+    if (currentView !== prevView) {
+      setPrevView(currentView);
+      clearMessages();
+    }
+  }, [currentView, prevView, clearMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {

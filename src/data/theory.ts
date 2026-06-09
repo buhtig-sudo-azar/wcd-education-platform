@@ -1576,7 +1576,7 @@ if ($request_uri ~* "%[0-1][0-9a-fA-F]") {
 | Логика | Extension-based | Path-prefix-based |`
   },
   {
-    id: 'frameworks-url-handling',
+    id: 'frameworks-request-handling',
     title: 'Как разные фреймворки обрабатывают запросы: Django, Laravel, Go, .NET',
     icon: 'Code',
     content: `Каждый веб-фреймворк по-своему обрабатывает URL — и это напрямую влияет на уязвимость к WCD. Давайте разберём четыре популярных фреймворка и выясним, какие из них более безопасны, а какие — менее.
