@@ -199,7 +199,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       set({ showSuggestions: true });
-    } catch (_error) {
+    } catch {
       if (controller.signal.aborted) {
         return;
       }
